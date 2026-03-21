@@ -40,6 +40,12 @@ pub enum Command {
     },
     /// Get Note count
     Stats,
+    /// Delete a note
+    Delete {
+        /// The slug of the note (without .md)
+        slug: String,
+    },
+
     /// Launch the full-screen interactive interface
     Tui,
 }

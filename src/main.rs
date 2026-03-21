@@ -9,6 +9,7 @@ use clap::Parser;
 
 use args::{Cli, Command};
 
+use cli::delete::delete_note;
 use cli::edit::edit_note;
 use cli::lint::lint_notes;
 use cli::list::list_notes;
@@ -30,6 +31,7 @@ fn main() {
         Command::View { slug } => view_note(slug),
         Command::Lint { fix } => lint_notes(*fix),
         Command::Stats => get_stats(),
+        Command::Delete { slug } => delete_note(slug),
         Command::Tui => {
             if let Err(err) = run_tui() {
                 eprintln!("TUI error: {}", err);
