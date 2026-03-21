@@ -113,7 +113,7 @@ impl NoteRepository for LocalMarkdownRepo {
         match fs::remove_file(&path) {
             Ok(_) => Ok(()),
             Err(e) if e.kind() == ErrorKind::NotFound => {
-                Err(CoreError::NoteNotFound(path.display().to_string()))
+                Err(CoreError::NoteNotFound(String::new()))
             }
             Err(e) => Err(CoreError::Io(e.into())),
         }
