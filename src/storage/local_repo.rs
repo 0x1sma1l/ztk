@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use crate::core::errors::CoreError;
@@ -104,6 +105,18 @@ impl NoteRepository for LocalMarkdownRepo {
 
         slugs.sort();
         Ok(slugs)
+    }
+
+    fn delete_note(&self, slug: &str) -> Result<(), CoreError> {
+        let path = self.note_path(slug);
+
+        match fs::remove_file(&path) {
+            Ok(_) => Ok(()),
+            Err(e) if e.kind() == ErrorKind::NotFound => {
+                Err(CoreError::NoteNotFound(path.display().to_string()))
+            }
+            Err(e) => Err(CoreError::Io(e.into())),
+        }
     }
 
     fn read_raw_note(&self, slug: &str) -> Result<String, CoreError> {
