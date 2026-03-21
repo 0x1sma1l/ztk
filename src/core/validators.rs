@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use crate::core::errors::CoreError;
+
 pub fn slugify(title: &str) -> String {
     title
         .trim()
@@ -11,6 +13,28 @@ pub fn slugify(title: &str) -> String {
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()
         .join("-")
+}
+
+pub fn validate_slug(slug: &str) -> Result<String, CoreError> {
+    let slug = slug.trim();
+
+    if slug.is_empty() {
+        return Err(CoreError::InvalidSlug("Slug cannot be empty".to_string()));
+    }
+
+    if !slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+        return Err(CoreError::InvalidSlug(
+            "Use ASCII letters, digits, and '-' only".to_string(),
+        ));
+    }
+
+    if slug.starts_with('-') || slug.ends_with('-') {
+        return Err(CoreError::InvalidSlug(
+            "Slug cannot start or end with '-'".to_string(),
+        ));
+    }
+
+    Ok(slug.to_string())
 }
 
 pub fn validate_tags(raw: &str) -> Result<Vec<String>, String> {

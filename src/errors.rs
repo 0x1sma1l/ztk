@@ -14,7 +14,4 @@ pub enum AppError {
         "Editor exited with a non-zero status. Check your $EDITOR configuration and try again."
     )]
     EditorExitedWithError,
-
-    #[error("Invalid input: {0}")]
-    InvalidInput(String),
 }

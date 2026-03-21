@@ -21,4 +21,7 @@ pub enum CoreError {
 
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
+
+    #[error("invalid slug: {0}")]
+    InvalidSlug(String),
 }
