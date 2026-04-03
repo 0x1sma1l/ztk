@@ -15,7 +15,7 @@ pub fn create_note<R: NoteRepository>(
     }
 
     let tags = match raw_tags {
-        Some(raw) => validate_tags(raw).map_err(CoreError::InvalidTags)?,
+        Some(raw) => validate_tags(raw).map_err(|e| CoreError::InvalidTags(e.to_string()))?,
         None => Vec::new(),
     };
 

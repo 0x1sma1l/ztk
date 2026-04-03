@@ -37,7 +37,7 @@ pub fn validate_slug(slug: &str) -> Result<String, CoreError> {
     Ok(slug.to_string())
 }
 
-pub fn validate_tags(raw: &str) -> Result<Vec<String>, String> {
+pub fn validate_tags(raw: &str) -> Result<Vec<String>, CoreError> {
     let mut clean_tags = Vec::new();
 
     for tag in raw.split(',') {
@@ -51,10 +51,10 @@ pub fn validate_tags(raw: &str) -> Result<Vec<String>, String> {
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
         {
-            return Err(format!(
-                "Tag `{}` contains invalid characters. Only alphanumeric, `_`, `-` are allowed.",
+            return Err(CoreError::InvalidTags(format!(
+                "Tag '{}' contains invalid characters. Only alphanumeric, `_`, `-` are allowed.",
                 tag
-            ));
+            )));
         }
 
         clean_tags.push(tag.to_string());
@@ -81,6 +81,31 @@ pub fn has_duplicate_tags(tags: &[String]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn slugify_edge_cases_are_stable() {
+        let cases = [
+            ("", ""),
+            ("   ", ""),
+            ("Hello World", "hello-world"),
+            ("Hello---World", "hello-world"),
+            ("  Rust & CLI!!  ", "rust-cli"),
+            ("___", ""),
+            ("naïve café", "na-ve-caf"),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(slugify(input), expected, "input: {:?}", input);
+        }
+    }
+
+    #[test]
+    fn slugify_is_deterministic() {
+        let input = "  Rust & CLI!!  ";
+        let first = slugify(input);
+        let second = slugify(input);
+        assert_eq!(first, second);
+    }
 
     #[test]
     fn validate_tags_accepts_valid_tags() {
