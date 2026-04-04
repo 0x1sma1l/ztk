@@ -13,11 +13,14 @@ pub enum CoreError {
     #[error("Note not found: {0}")]
     NoteNotFound(String),
 
-    #[error("Invalid frontmatter for `{0}`: {1}")]
-    InvalidFrontmatter(String, String),
+    #[error("No frontmatter found in note")]
+    EmptyFrontmatter,
 
     #[error("Failed to serialize frontmatter: {0}")]
-    FrontmatterSerialize(#[from] serde_yaml::Error),
+    FrontmatterSerialize(serde_yaml::Error),
+
+    #[error("Failed to parse frontmatter: {0}")]
+    FrontmatterParse(serde_yaml::Error),
 
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),

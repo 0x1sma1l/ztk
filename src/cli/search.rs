@@ -27,7 +27,7 @@ pub fn interactive_search() -> Result<(), Box<dyn Error>> {
 
         let content = fs::read_to_string(&path)?;
 
-        if let Ok((frontmatter, _)) = parse_frontmatter_and_body(&content, slug) {
+        if let Ok((frontmatter, _)) = parse_frontmatter_and_body(&content) {
             entries.push(format!("{} => {}", slug, frontmatter.title));
         }
     }

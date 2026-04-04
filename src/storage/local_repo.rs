@@ -64,8 +64,7 @@ impl NoteRepository for LocalMarkdownRepo {
         }
 
         let content = fs::read_to_string(&path)?;
-        let (fm, body) = parse_frontmatter_and_body(&content, slug)
-            .map_err(|err| CoreError::InvalidFrontmatter(slug.to_string(), err))?;
+        let (fm, body) = parse_frontmatter_and_body(&content)?;
 
         Ok(Note {
             slug: slug.to_string(),
