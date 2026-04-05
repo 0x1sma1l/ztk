@@ -10,45 +10,47 @@ pub struct LintIssue {
     pub message: String,
 }
 
-pub fn lint_notes<R: NoteRepository>(repo: &R, fix: bool) -> Result<Vec<LintIssue>, CoreError> {
+pub fn lint_note_by_slug<R: NoteRepository>(
+    repo: &R,
+    slug: &str,
+    fix: bool,
+) -> Result<Vec<LintIssue>, CoreError> {
     let mut issues = Vec::new();
 
-    for slug in repo.list_note_slugs()? {
-        let mut note = match repo.read_note(&slug) {
-            Ok(note) => note,
-            Err(err) => {
-                issues.push(issue(&slug, &err.to_string()));
-                continue;
-            }
-        };
-
-        let mut changed = false;
-
-        if note.title.trim().is_empty() {
-            issues.push(issue(&note.slug, "Missing required field `title`"))
+    let mut note = match repo.read_note(slug) {
+        Ok(note) => note,
+        Err(err) => {
+            issues.push(issue(slug, &err.to_string()));
+            return Ok(issues);
         }
+    };
 
-        if note.date.trim().is_empty() {
-            issues.push(issue(&note.slug, "Missing required field `date`"))
-        } else if invalid_date(&note.date) {
-            issues.push(issue(
-                &note.slug,
-                "Invalid `date` format. Expected YYYY-MM-DD",
-            ))
+    let mut changed = false;
+
+    if note.title.trim().is_empty() {
+        issues.push(issue(slug, "Missing required field `title`"))
+    }
+
+    if note.date.trim().is_empty() {
+        issues.push(issue(slug, "Missing required field `date`"))
+    } else if invalid_date(&note.date) {
+        issues.push(issue(
+            &note.slug,
+            "Invalid `date` format. Expected YYYY-MM-DD",
+        ))
+    }
+
+    if has_duplicate_tags(&note.tags) {
+        issues.push(issue(slug, "Duplicate tags found"));
+
+        if fix {
+            dedup_tags(&mut note.tags);
+            changed = true;
         }
+    }
 
-        if has_duplicate_tags(&note.tags) {
-            issues.push(issue(&note.slug, "Duplicate tags found"));
-
-            if fix {
-                dedup_tags(&mut note.tags);
-                changed = true;
-            }
-        }
-
-        if fix && changed {
-            repo.save_note(&note)?;
-        }
+    if fix && changed {
+        repo.save_note(&note)?;
     }
 
     Ok(issues)
