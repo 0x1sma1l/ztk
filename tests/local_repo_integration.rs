@@ -34,6 +34,7 @@ fn save_and_read_note_roundtrip() {
         title: "Roundtrip Note".to_string(),
         date: "2026-04-04".to_string(),
         tags: vec!["rust".to_string(), "integration".to_string()],
+        updated_at: "2026-04-04".to_string(),
         body: "\n\n# Roundtrip\n\nBody content.\n".to_string(),
     };
 
@@ -44,6 +45,7 @@ fn save_and_read_note_roundtrip() {
     assert_eq!(loaded.title, note.title);
     assert_eq!(loaded.date, note.date);
     assert_eq!(loaded.tags, note.tags);
+    assert_eq!(loaded.updated_at, note.updated_at);
     assert_eq!(loaded.body, note.body);
 
     cleanup(&notes_dir);
@@ -59,6 +61,7 @@ fn list_notes_returns_saved_notes() {
         title: "Alpha".to_string(),
         date: "2026-04-04".to_string(),
         tags: vec![],
+        updated_at: "2026-04-04".to_string(),
         body: "alpha body".to_string(),
     };
     let note_two = Note {
@@ -66,6 +69,7 @@ fn list_notes_returns_saved_notes() {
         title: "Beta".to_string(),
         date: "2026-04-04".to_string(),
         tags: vec!["tag".to_string()],
+        updated_at: "2026-04-04".to_string(),
         body: "beta body".to_string(),
     };
 

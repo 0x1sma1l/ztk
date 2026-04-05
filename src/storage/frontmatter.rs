@@ -8,6 +8,7 @@ pub struct Frontmatter {
     pub date: String,
     #[serde(default)]
     pub tags: Vec<String>,
+    pub updated_at: String,
 }
 
 pub fn parse_frontmatter_and_body(content: &str) -> Result<(Frontmatter, String), CoreError> {
@@ -43,6 +44,7 @@ mod tests {
             title: "Roundtrip Title".to_string(),
             date: "2026-04-04".to_string(),
             tags: vec!["rust".to_string(), "week3".to_string()],
+            updated_at: "2026-04-04".to_string(),
         };
         let body = "# Heading\n\nBody content.\n";
 
@@ -53,6 +55,7 @@ mod tests {
         assert_eq!(parsed_fm.title, fm.title);
         assert_eq!(parsed_fm.date, fm.date);
         assert_eq!(parsed_fm.tags, fm.tags);
+        assert_eq!(parsed_fm.updated_at, fm.updated_at);
         assert_eq!(parsed_body.trim_start_matches('\n'), body);
     }
 
