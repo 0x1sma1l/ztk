@@ -1,23 +1,81 @@
-use crate::core::usecases::lint as lint_usecase;
+use crate::core::repository::NoteRepository;
+use crate::core::usecases::lint::lint_note_by_slug;
 use crate::errors::AppError;
 use crate::storage::local_repo::LocalMarkdownRepo;
 
+use colored::Colorize;
+use std::thread;
+use std::time::Duration;
+
+const DELAY_IN_MILLISECONDS: u64 = 2;
+
 pub fn lint_notes(fix: bool) -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::default();
-    let issues = lint_usecase::lint_notes(&repo, fix)?;
+    let slugs = repo.list_note_slugs()?;
+    let mut total = 0;
+    let mut fixed = 0;
+    let mut failed = 0;
 
-    if issues.is_empty() {
-        println!("No lint issues found.");
-        return Ok(());
+    println!("linting notes...");
+
+    for slug in slugs {
+        let result = lint_note_by_slug(&repo, &slug, fix);
+
+        match result {
+            Ok(issues) if issues.is_empty() => {
+                println!("{slug}.md ... {}", "ok".green());
+            }
+            Ok(issues) => {
+                if fix {
+                    let post = lint_note_by_slug(&repo, &slug, false)?;
+                    if post.is_empty() {
+                        println!("{slug}.md ... {}", "fixed".yellow());
+                        fixed += 1;
+                    } else {
+                        let details = post
+                            .iter()
+                            .map(|i| format!("{}", i.message))
+                            .collect::<Vec<_>>()
+                            .join("; ");
+
+                        let issue_slug = issues.first().map(|i| i.slug.as_str()).unwrap_or(&slug);
+                        println!(
+                            "{}.md ... {} (Error: {details})",
+                            issue_slug,
+                            "failed".red()
+                        );
+
+                        failed += 1;
+                    }
+                } else {
+                    let details = issues
+                        .iter()
+                        .map(|i| format!("{}", i.message))
+                        .collect::<Vec<_>>()
+                        .join("; ");
+
+                    let issue_slug = issues.first().map(|i| i.slug.as_str()).unwrap_or(&slug);
+
+                    println!(
+                        "{}.md ... {} (Error: {details})",
+                        issue_slug,
+                        "failed".red()
+                    );
+                    failed += 1;
+                }
+            }
+            Err(err) => {
+                println!("{slug}.md ... {} (Error: {err})", "failed".red());
+                failed += 1;
+            }
+        }
+
+        total += 1;
+        thread::sleep(Duration::from_millis(DELAY_IN_MILLISECONDS));
     }
 
-    for issue in &issues {
-        println!("{}: {}", issue.slug, issue.message);
-    }
-
-    if fix {
-        println!("Applied available auto-fixes.");
-    }
+    println!("\n");
+    println!("Done: {} files, {} fixed, {} failed", total, fixed, failed);
 
     Ok(())
 }
