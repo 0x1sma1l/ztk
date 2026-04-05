@@ -15,7 +15,7 @@ pub fn slugify(title: &str) -> String {
         .join("-")
 }
 
-pub fn validate_slug(slug: &str) -> Result<String, CoreError> {
+pub fn validate_slug(slug: &str) -> Result<&str, CoreError> {
     let slug = slug.trim();
 
     if slug.is_empty() {
@@ -34,7 +34,7 @@ pub fn validate_slug(slug: &str) -> Result<String, CoreError> {
         ));
     }
 
-    Ok(slug.to_string())
+    Ok(slug)
 }
 
 pub fn validate_tags(raw: &str) -> Result<Vec<String>, CoreError> {

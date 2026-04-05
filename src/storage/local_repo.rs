@@ -49,6 +49,7 @@ impl NoteRepository for LocalMarkdownRepo {
             title: note.title.clone(),
             date: note.date.clone(),
             tags: note.tags.clone(),
+            updated_at: note.updated_at.clone(),
         };
 
         let content = build_note_content(&frontmatter, &note.body)?;
@@ -58,12 +59,7 @@ impl NoteRepository for LocalMarkdownRepo {
     }
 
     fn read_note(&self, slug: &str) -> Result<Note, CoreError> {
-        let path = self.note_path(slug);
-        if !path.exists() {
-            return Err(CoreError::NoteNotFound(path.display().to_string()));
-        }
-
-        let content = fs::read_to_string(&path)?;
+        let content = self.read_raw_note(slug)?;
         let (fm, body) = parse_frontmatter_and_body(&content)?;
 
         Ok(Note {
@@ -71,8 +67,18 @@ impl NoteRepository for LocalMarkdownRepo {
             title: fm.title,
             date: fm.date,
             tags: fm.tags,
+            updated_at: fm.updated_at,
             body,
         })
+    }
+
+    fn ensure_note_exists(&self, slug: &str) -> Result<(), CoreError> {
+        let path = self.note_path(slug);
+        if !path.exists() {
+            return Err(CoreError::NoteNotFound(path.display().to_string()));
+        }
+
+        Ok(())
     }
 
     fn list_notes(&self) -> Result<Vec<Note>, CoreError> {
@@ -114,26 +120,24 @@ impl NoteRepository for LocalMarkdownRepo {
             Err(e) if e.kind() == ErrorKind::NotFound => {
                 Err(CoreError::NoteNotFound(String::new()))
             }
-            Err(e) => Err(CoreError::Io(e.into())),
+            Err(e) => Err(CoreError::Io(e)),
         }
     }
 
     fn read_raw_note(&self, slug: &str) -> Result<String, CoreError> {
-        let path = self.note_path(slug);
-        if !path.exists() {
-            return Err(CoreError::NoteNotFound(path.display().to_string()));
-        }
+        self.ensure_note_exists(slug)?;
 
-        Ok(fs::read_to_string(path)?)
+        let path = self.note_path(slug);
+        let raw = fs::read_to_string(path)?;
+
+        Ok(raw)
     }
 
-    fn write_raw_note(&self, slug: &str, content: &str) -> Result<(), CoreError> {
-        let path = self.note_path(slug);
-        if !path.exists() {
-            return Err(CoreError::NoteNotFound(path.display().to_string()));
-        }
+    // fn write_raw_note(&self, slug: &str, content: &str) -> Result<(), CoreError> {
+    //     self.ensure_note_exists(slug)?;
 
-        fs::write(path, content)?;
-        Ok(())
-    }
+    //     let path = self.note_path(slug);
+    //     fs::write(path, content)?;
+    //     Ok(())
+    // }
 }

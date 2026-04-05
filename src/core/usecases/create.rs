@@ -15,19 +15,21 @@ pub fn create_note<R: NoteRepository>(
     }
 
     let tags = match raw_tags {
-        Some(raw) => validate_tags(raw).map_err(|e| CoreError::InvalidTags(e.to_string()))?,
+        Some(raw) => validate_tags(raw)?,
         None => Vec::new(),
     };
 
     let base_slug = slugify(title);
     let slug = unique_slug(repo, &base_slug)?;
     let date = Local::now().format("%Y-%m-%d").to_string();
+    let updated_at = date.clone();
 
     let note = Note {
         slug,
         title: title.to_string(),
         date,
         tags,
+        updated_at,
         body: format!("# {}\n\n<!-- Start writing your note below -->\n", title),
     };
 

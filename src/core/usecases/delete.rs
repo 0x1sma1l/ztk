@@ -2,7 +2,7 @@ use crate::core::{errors::CoreError, repository::NoteRepository, validators::val
 
 pub fn delete_note<R: NoteRepository>(repo: &R, slug: &str) -> Result<(), CoreError> {
     let slug = validate_slug(slug)?;
-    repo.delete_note(&slug)
+    repo.delete_note(slug)
 }
 
 #[cfg(test)]
@@ -36,8 +36,10 @@ mod tests {
             title: "Delete Me".to_string(),
             date: "2026-03-21".to_string(),
             tags: vec![],
+            updated_at: "2026-03-21".to_string(),
             body: "body".to_string(),
         };
+
         repo.save_note(&note).expect("failed to save setup note");
         assert!(repo.note_path("delete-me").exists());
 
