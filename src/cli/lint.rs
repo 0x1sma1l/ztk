@@ -1,5 +1,5 @@
 use crate::core::repository::NoteRepository;
-use crate::core::usecases::lint::lint_note_by_slug;
+use crate::core::usecases::lint::{LintIssue, lint_note_by_slug};
 use crate::errors::AppError;
 use crate::storage::local_repo::LocalMarkdownRepo;
 
@@ -32,35 +32,11 @@ pub fn lint_notes(fix: bool) -> Result<(), AppError> {
                         println!("{slug}.md ... {}", "fixed".yellow());
                         fixed += 1;
                     } else {
-                        let details = post
-                            .iter()
-                            .map(|i| i.message.to_string())
-                            .collect::<Vec<_>>()
-                            .join("; ");
-
-                        let issue_slug = issues.first().map(|i| i.slug.as_str()).unwrap_or(&slug);
-                        println!(
-                            "{}.md ... {} (Error: {details})",
-                            issue_slug,
-                            "failed".red()
-                        );
-
+                        print_failed(&post, &slug);
                         failed += 1;
                     }
                 } else {
-                    let details = issues
-                        .iter()
-                        .map(|i| i.message.to_string())
-                        .collect::<Vec<_>>()
-                        .join("; ");
-
-                    let issue_slug = issues.first().map(|i| i.slug.as_str()).unwrap_or(&slug);
-
-                    println!(
-                        "{}.md ... {} (Error: {details})",
-                        issue_slug,
-                        "failed".red()
-                    );
+                    print_failed(&issues, &slug);
                     failed += 1;
                 }
             }
@@ -74,7 +50,7 @@ pub fn lint_notes(fix: bool) -> Result<(), AppError> {
         thread::sleep(Duration::from_millis(DELAY_IN_MILLISECONDS));
     }
 
-    println!("\n");
+    println!();
     println!("Done: {} files, {} fixed, {} failed", total, fixed, failed);
 
     if !fix && failed > 0 {
@@ -82,4 +58,20 @@ pub fn lint_notes(fix: bool) -> Result<(), AppError> {
     }
 
     Ok(())
+}
+
+fn print_failed(issues: &[LintIssue], slug: &str) {
+    let details = issues
+        .iter()
+        .map(|i| i.message.to_string())
+        .collect::<Vec<_>>()
+        .join("; ");
+
+    let issue_slug = issues.first().map(|i| i.slug.as_str()).unwrap_or(slug);
+
+    println!(
+        "{}.md ... {} (Error: {details})",
+        issue_slug,
+        "failed".red()
+    );
 }
