@@ -77,5 +77,9 @@ pub fn lint_notes(fix: bool) -> Result<(), AppError> {
     println!("\n");
     println!("Done: {} files, {} fixed, {} failed", total, fixed, failed);
 
+    if !fix && failed > 0 {
+        return Err(AppError::LintFailed(failed));
+    }
+
     Ok(())
 }
