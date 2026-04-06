@@ -34,7 +34,7 @@ pub fn lint_notes(fix: bool) -> Result<(), AppError> {
                     } else {
                         let details = post
                             .iter()
-                            .map(|i| format!("{}", i.message))
+                            .map(|i| i.message.to_string())
                             .collect::<Vec<_>>()
                             .join("; ");
 
@@ -50,7 +50,7 @@ pub fn lint_notes(fix: bool) -> Result<(), AppError> {
                 } else {
                     let details = issues
                         .iter()
-                        .map(|i| format!("{}", i.message))
+                        .map(|i| i.message.to_string())
                         .collect::<Vec<_>>()
                         .join("; ");
 

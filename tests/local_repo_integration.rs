@@ -1,33 +1,14 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use tempfile::TempDir;
 
 use zet::core::errors::CoreError;
 use zet::core::note::Note;
 use zet::core::repository::NoteRepository;
 use zet::storage::local_repo::LocalMarkdownRepo;
 
-fn test_notes_dir() -> PathBuf {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock before unix epoch")
-        .as_nanos();
-
-    std::env::temp_dir().join(format!(
-        "zet-local-repo-integration-{}-{}",
-        std::process::id(),
-        nanos
-    ))
-}
-
-fn cleanup(dir: &Path) {
-    let _ = fs::remove_dir_all(dir);
-}
-
 #[test]
 fn save_and_read_note_roundtrip() {
-    let notes_dir = test_notes_dir();
-    let repo = LocalMarkdownRepo::new(&notes_dir);
+    let notes_dir = TempDir::new().expect("failed to create temp dir");
+    let repo = LocalMarkdownRepo::new(notes_dir);
 
     let note = Note {
         slug: "roundtrip-note".to_string(),
@@ -47,14 +28,12 @@ fn save_and_read_note_roundtrip() {
     assert_eq!(loaded.tags, note.tags);
     assert_eq!(loaded.updated_at, note.updated_at);
     assert_eq!(loaded.body, note.body);
-
-    cleanup(&notes_dir);
 }
 
 #[test]
 fn list_notes_returns_saved_notes() {
-    let notes_dir = test_notes_dir();
-    let repo = LocalMarkdownRepo::new(&notes_dir);
+    let notes_dir = TempDir::new().expect("failed to create temp dir");
+    let repo = LocalMarkdownRepo::new(notes_dir);
 
     let note_one = Note {
         slug: "alpha".to_string(),
@@ -83,29 +62,23 @@ fn list_notes_returns_saved_notes() {
     slugs.sort();
 
     assert_eq!(slugs, vec!["alpha".to_string(), "beta".to_string()]);
-
-    cleanup(&notes_dir);
 }
 
 #[test]
 fn read_missing_note_returns_not_found() {
-    let notes_dir = test_notes_dir();
-    let repo = LocalMarkdownRepo::new(&notes_dir);
+    let notes_dir = TempDir::new().expect("failed to create temp dir");
+    let repo = LocalMarkdownRepo::new(notes_dir);
 
     let err = repo.read_note("missing-note").unwrap_err();
     assert!(matches!(err, CoreError::NoteNotFound(_)));
-
-    cleanup(&notes_dir);
 }
 
 #[test]
 fn note_path_uses_slug_md_naming() {
-    let notes_dir = test_notes_dir();
-    let repo = LocalMarkdownRepo::new(&notes_dir);
+    let notes_dir = TempDir::new().expect("failed to create temp dir");
+    let repo = LocalMarkdownRepo::new(notes_dir);
 
     let path = repo.note_path("my-slug");
     let path_string = path.to_string_lossy();
     assert!(path_string.ends_with("my-slug.md"));
-
-    cleanup(&notes_dir);
 }
