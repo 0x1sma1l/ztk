@@ -14,4 +14,7 @@ pub enum AppError {
         "Editor exited with a non-zero status. Check your $EDITOR configuration and try again."
     )]
     EditorExitedWithError,
+
+    #[error("Lint failed: {0} file(s) contain issues")]
+    LintFailed(usize),
 }
