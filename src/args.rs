@@ -2,7 +2,11 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "zet")]
-#[command(about = "A simple note-taking CLI tool in Rust", long_about = None)]
+#[command(
+    about = "Local-first, terminal-first Markdown note manager",
+    long_about = "Zet is a local-first, keyboard-driven note tool for creating, viewing, editing, linting, and managing Markdown notes from the terminal.",
+    after_help = "Examples:\n  zet new \"Rust Ownership\" --tags rust,learning\n  zet list\n  zet view rust-ownership\n  zet edit rust-ownership\n  zet lint\n  zet lint --fix\n  zet delete rust-ownership\n  zet stats\n  zet tui"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
@@ -10,42 +14,43 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Create a new note.
     New {
-        /// The title of the note
+        /// Note title.
         title: String,
 
-        /// Comma separated tags (e.g rust, zettelkasten)
+        /// Comma-separated tags (example: rust, zettelkasten).
         #[arg(short, long)]
         tags: Option<String>,
     },
-    /// List all notes
+    /// List all notes.
     List,
-    /// Edit an existing note in your $EDITOR
+    /// Edit a note in your $EDITOR.
     Edit {
-        /// The slug of the note (without .md)
+        /// Note slug (without .md).
         slug: String,
     },
-    /// View the selected notes as Markdown
+    /// View a note as rendered Markdown.
     View {
-        /// the slug of the note (without .md)
+        /// Note slug (without .md).
         slug: String,
     },
     /// Launch interactive fuzzy search UI
     // Search,
-    /// Check for Errors in notes
+    /// Lint notes for data and formatting issues.
     Lint {
-        /// Fix issues automatically
+        /// Apply available automatic fixes.
         #[arg(long)]
         fix: bool,
     },
-    /// Get Note count
+    /// Show note count summary.
     Stats,
-    /// Delete a note
+    /// Delete a note.
     Delete {
-        /// The slug of the note (without .md)
+        /// Note slug (without .md).
         slug: String,
     },
 
-    /// Launch the full-screen interactive interface
+    /// Launch the full-screen terminal interface.
     Tui,
 }
