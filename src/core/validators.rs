@@ -38,9 +38,15 @@ pub fn validate_slug(slug: &str) -> Result<&str, CoreError> {
 }
 
 pub fn validate_tags(raw: &str) -> Result<Vec<String>, CoreError> {
+    validate_tag_values(raw.split(','))
+}
+
+pub fn validate_tag_values<'a>(
+    tags: impl IntoIterator<Item = &'a str>,
+) -> Result<Vec<String>, CoreError> {
     let mut clean_tags = Vec::new();
 
-    for tag in raw.split(',') {
+    for tag in tags {
         let tag = tag.trim();
 
         if tag.is_empty() {
@@ -116,6 +122,12 @@ mod tests {
     #[test]
     fn validate_tags_rejects_invalid_tags() {
         let result = validate_tags("rust, zet_notes, cli-tool!");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn tag_value_validation_does_not_split_programmatic_values() {
+        let result = validate_tag_values(["rust,cli"]);
         assert!(result.is_err());
     }
 

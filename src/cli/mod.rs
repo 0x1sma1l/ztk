@@ -6,4 +6,5 @@ pub mod new;
 pub mod search;
 pub mod stats;
 pub mod tui;
+pub mod update;
 pub mod view;

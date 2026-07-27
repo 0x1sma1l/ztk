@@ -30,6 +30,23 @@ pub enum Command {
         /// Note slug (without .md).
         slug: String,
     },
+    /// Update note fields without opening an editor.
+    Update {
+        /// Note slug (without .md). Changing the title does not change the slug.
+        slug: String,
+
+        /// Replacement title.
+        #[arg(long)]
+        title: Option<String>,
+
+        /// Replacement comma-separated tags; pass an empty value to clear tags.
+        #[arg(long)]
+        tags: Option<String>,
+
+        /// Replacement Markdown body; pass an empty value to clear the body.
+        #[arg(long)]
+        body: Option<String>,
+    },
     /// View a note as rendered Markdown.
     View {
         /// Note slug (without .md).

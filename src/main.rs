@@ -15,6 +15,7 @@ use cli::new::create_note;
 use cli::search::search_notes;
 use cli::stats::get_stats;
 use cli::tui::run_tui;
+use cli::update::update_note;
 use cli::view::view_note;
 
 fn main() {
@@ -27,6 +28,12 @@ fn main() {
         }
         Command::List => list_notes(),
         Command::Edit { slug } => edit_note(slug),
+        Command::Update {
+            slug,
+            title,
+            tags,
+            body,
+        } => update_note(slug, title.as_deref(), tags.as_deref(), body.as_deref()),
         Command::View { slug } => view_note(slug),
         Command::Search { query } => search_notes(query),
         Command::Lint { fix } => lint_notes(*fix),

@@ -112,6 +112,72 @@ fn view_reports_missing_and_invalid_slugs() {
 }
 
 #[test]
+fn update_changes_structured_fields_without_renaming_the_note() {
+    let root = TempDir::new().expect("failed to create temp dir");
+    write_note(&root, "stable-slug", "Original body.");
+
+    let output = zet(
+        &root,
+        &[
+            "update",
+            "stable-slug",
+            "--title",
+            "New title",
+            "--tags",
+            "rust,Rust,cli",
+            "--body",
+            "New body.",
+        ],
+    );
+
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    assert!(stdout(&output).contains("note updated: notes/stable-slug.md"));
+    assert!(!root.path().join("notes/new-title.md").exists());
+    let content = fs::read_to_string(root.path().join("notes/stable-slug.md")).unwrap();
+    assert!(content.contains("title: New title"));
+    assert!(content.contains("- rust"));
+    assert!(content.contains("- cli"));
+    assert_eq!(content.matches("- rust").count(), 1);
+    assert!(content.contains("New body."));
+}
+
+#[test]
+fn update_can_clear_tags_and_body() {
+    let root = TempDir::new().expect("failed to create temp dir");
+    write_note(&root, "clear-me", "Original body.");
+
+    let output = zet(&root, &["update", "clear-me", "--tags=", "--body="]);
+
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let content = fs::read_to_string(root.path().join("notes/clear-me.md")).unwrap();
+    assert!(content.contains("tags: []"));
+    assert!(!content.contains("Original body."));
+}
+
+#[test]
+fn invalid_or_no_op_updates_do_not_rewrite_the_note() {
+    let root = TempDir::new().expect("failed to create temp dir");
+    write_note(&root, "unchanged", "Original body.");
+    let path = root.path().join("notes/unchanged.md");
+    let before = fs::read_to_string(&path).unwrap();
+
+    let invalid_title = zet(&root, &["update", "unchanged", "--title", "   "]);
+    assert!(!invalid_title.status.success());
+    assert!(stderr(&invalid_title).contains("Title cannot be empty"));
+    assert_eq!(fs::read_to_string(&path).unwrap(), before);
+
+    let invalid_tags = zet(&root, &["update", "unchanged", "--tags", "bad!"]);
+    assert!(!invalid_tags.status.success());
+    assert!(stderr(&invalid_tags).contains("Invalid tags"));
+    assert_eq!(fs::read_to_string(&path).unwrap(), before);
+
+    let no_op = zet(&root, &["update", "unchanged"]);
+    assert!(no_op.status.success(), "stderr: {}", stderr(&no_op));
+    assert!(stdout(&no_op).contains("note unchanged"));
+    assert_eq!(fs::read_to_string(&path).unwrap(), before);
+}
+
+#[test]
 fn edit_succeeds_when_editor_exits_zero() {
     let root = TempDir::new().expect("failed to create temp dir");
     write_note(&root, "edit-me", "Body before editor.");
@@ -225,5 +291,28 @@ fn edit_supports_quoted_executable_paths_and_flags() {
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let arguments = fs::read_to_string(argument_log).expect("fake editor should log arguments");
-    assert_eq!(arguments, "--wait\n--reuse-window\nnotes/edit-me.md\n");
+    let arguments = arguments.lines().collect::<Vec<_>>();
+    assert_eq!(&arguments[..2], ["--wait", "--reuse-window"]);
+    assert!(arguments[2].ends_with(".md"));
+}
+
+#[cfg(unix)]
+#[test]
+fn invalid_editor_output_does_not_overwrite_the_original_note() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let root = TempDir::new().expect("failed to create temp dir");
+    write_note(&root, "edit-me", "Original body.");
+    let note_path = root.path().join("notes/edit-me.md");
+    let before = fs::read_to_string(&note_path).unwrap();
+    let editor_path = root.path().join("invalid-editor");
+    fs::write(&editor_path, "#!/bin/sh\nprintf 'invalid' > \"$1\"\n").unwrap();
+    let mut permissions = fs::metadata(&editor_path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&editor_path, permissions).unwrap();
+
+    let output = zet_with_editor(&root, "edit-me", editor_path.to_str().unwrap());
+
+    assert!(!output.status.success());
+    assert_eq!(fs::read_to_string(note_path).unwrap(), before);
 }

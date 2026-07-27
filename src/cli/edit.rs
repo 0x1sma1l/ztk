@@ -1,17 +1,22 @@
-use std::{env, ffi::OsString, process::Command};
+use std::{env, ffi::OsString, fs, process::Command};
 
 use crate::errors::AppError;
 use zet::core::repository::NoteRepository;
-use zet::core::usecases::edit::update_note_content;
+use zet::core::usecases::edit::{UpdateNoteRequest, update_note};
 use zet::core::validators::validate_slug;
+use zet::storage::frontmatter::parse_frontmatter_and_body;
 use zet::storage::local_repo::LocalMarkdownRepo;
 
 pub fn edit_note(slug: &str) -> Result<(), AppError> {
     let slug = validate_slug(slug)?;
     let repo = LocalMarkdownRepo::default();
     repo.ensure_note_exists(slug)?;
-
-    let note_path = repo.note_path(slug)?;
+    let original = repo.read_raw_note(slug)?;
+    let temporary = tempfile::Builder::new()
+        .prefix(&format!("zet-{slug}-"))
+        .suffix(".md")
+        .tempfile()?;
+    fs::write(temporary.path(), original)?;
 
     let visual = env::var_os("VISUAL");
     let editor = env::var_os("EDITOR");
@@ -20,7 +25,7 @@ pub fn edit_note(slug: &str) -> Result<(), AppError> {
     let executable = command_parts.remove(0);
     let status = Command::new(&executable)
         .args(command_parts)
-        .arg(&note_path)
+        .arg(temporary.path())
         .status()
         .map_err(|source| AppError::EditorLaunch {
             editor: executable,
@@ -31,7 +36,17 @@ pub fn edit_note(slug: &str) -> Result<(), AppError> {
         return Err(AppError::EditorExitedWithError);
     }
 
-    update_note_content(&repo, slug)?;
+    let edited = fs::read_to_string(temporary.path())?;
+    let (frontmatter, body) = parse_frontmatter_and_body(&edited)?;
+    update_note(
+        &repo,
+        slug,
+        UpdateNoteRequest {
+            title: Some(frontmatter.title),
+            tags: Some(frontmatter.tags),
+            body: Some(body),
+        },
+    )?;
 
     Ok(())
 }
