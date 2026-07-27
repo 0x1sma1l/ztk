@@ -58,6 +58,30 @@ impl LocalMarkdownRepo {
             self.trash_dir().join(format!("{id}.toml")),
         ))
     }
+
+    fn available_trash_paths(
+        &self,
+        slug: &str,
+        stamp: &str,
+    ) -> Result<(String, PathBuf, PathBuf), CoreError> {
+        for suffix in 0_u64..=u64::MAX {
+            let candidate_id: String = if suffix == 0 {
+                format!("{slug}--{stamp}")
+            } else {
+                format!("{slug}--{stamp}-{suffix}")
+            };
+
+            let (note_path, metadata_path): (PathBuf, PathBuf) =
+                self.trash_paths(candidate_id.as_str())?;
+            if !note_path.exists() && !metadata_path.exists() {
+                return Ok((candidate_id, note_path, metadata_path));
+            }
+        }
+
+        Err(CoreError::Io(std::io::Error::other(
+            "trash entry suffix space exhausted",
+        )))
+    }
 }
 
 impl NoteRepository for LocalMarkdownRepo {
@@ -149,19 +173,7 @@ impl NoteRepository for LocalMarkdownRepo {
         }
         fs::create_dir_all(self.trash_dir())?;
         let stamp = chrono::Local::now().format("%Y%m%dT%H%M%S%f").to_string();
-        let mut suffix = 0;
-        let (id, note_path, metadata_path) = loop {
-            let id = if suffix == 0 {
-                format!("{slug}--{stamp}")
-            } else {
-                format!("{slug}--{stamp}-{suffix}")
-            };
-            let (note, metadata) = self.trash_paths(&id)?;
-            if !note.exists() && !metadata.exists() {
-                break (id, note, metadata);
-            }
-            suffix += 1;
-        };
+        let (id, note_path, metadata_path) = self.available_trash_paths(slug, &stamp)?;
         let entry = TrashedNote {
             id,
             original_slug: slug.to_string(),

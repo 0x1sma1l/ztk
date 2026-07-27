@@ -30,6 +30,18 @@ fn help_lists_the_complete_cli_v1_command_set() {
 }
 
 #[test]
+fn version_reports_the_package_version() {
+    let output = zet(&["--version"]);
+
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    assert_eq!(
+        stdout(&output),
+        format!("zet {}\n", env!("CARGO_PKG_VERSION"))
+    );
+    assert!(stderr(&output).is_empty());
+}
+
+#[test]
 fn clap_contract_errors_use_exit_two_and_stderr() {
     for args in [&["unknown"][..], &["view"][..], &["new"][..]] {
         let output = zet(args);

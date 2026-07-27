@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "zet")]
+#[command(name = "zet", version)]
 #[command(
     about = "Local-first, terminal-first Markdown note manager",
     long_about = "Zet is a local-first, keyboard-driven note tool for creating, viewing, editing, linting, and managing Markdown notes from the terminal.",
@@ -154,5 +154,12 @@ mod tests {
                 subcommand.get_name()
             );
         }
+    }
+
+    #[test]
+    fn version_matches_the_package_version() {
+        let command = Cli::command();
+
+        assert_eq!(command.get_version(), Some(env!("CARGO_PKG_VERSION")));
     }
 }
