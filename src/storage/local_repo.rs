@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::core::errors::CoreError;
 use crate::core::note::Note;
-use crate::core::repository::NoteRepository;
+use crate::core::repository::{NoteCollection, NoteLoadIssue, NoteRepository};
 use crate::core::validators::validate_slug;
 use crate::storage::frontmatter::{Frontmatter, build_note_content, parse_frontmatter_and_body};
 
@@ -84,14 +84,20 @@ impl NoteRepository for LocalMarkdownRepo {
         Ok(())
     }
 
-    fn list_notes(&self) -> Result<Vec<Note>, CoreError> {
-        let mut notes = Vec::new();
+    fn list_notes(&self) -> Result<NoteCollection, CoreError> {
+        let mut collection = NoteCollection::default();
 
         for slug in self.list_note_slugs()? {
-            notes.push(self.read_note(&slug)?);
+            match self.read_note(&slug) {
+                Ok(note) => collection.notes.push(note),
+                Err(error) => collection.issues.push(NoteLoadIssue {
+                    slug,
+                    message: error.to_string(),
+                }),
+            }
         }
 
-        Ok(notes)
+        Ok(collection)
     }
 
     fn list_note_slugs(&self) -> Result<Vec<String>, CoreError> {

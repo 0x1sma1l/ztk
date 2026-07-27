@@ -2,7 +2,6 @@ use color_eyre::Result;
 use ratatui::DefaultTerminal;
 
 use crate::core::note::Note;
-use crate::core::repository::NoteRepository;
 use crate::core::usecases::list as list_usecase;
 use crate::storage::local_repo::LocalMarkdownRepo;
 
@@ -134,42 +133,24 @@ impl App {
     pub fn refresh_notes(&mut self) {
         let repo = LocalMarkdownRepo::default();
         match list_usecase::list_notes(&repo) {
-            Ok(notes) => {
-                let note_count = notes.len();
-                self.set_notes(notes);
-                if note_count == 0 {
+            Ok(collection) => {
+                let note_count = collection.notes.len();
+                let skipped = collection.issues.len();
+                self.set_notes(collection.notes);
+
+                if skipped > 0 {
+                    self.set_status_message(format!(
+                        "loaded {note_count} note(s), skipped {skipped} invalid file(s)"
+                    ));
+                } else if note_count == 0 {
                     self.set_status_message("no notes found (use `zet new <title>`)");
                 } else {
                     self.set_status_message(format!("loaded {note_count} note(s)"));
                 }
             }
             Err(error) => {
-                // TUI should degrade gracefully: keep readable notes even if some files are malformed.
-                let mut recovered_notes = Vec::new();
-                let mut skipped = 0usize;
-
-                match repo.list_note_slugs() {
-                    Ok(slugs) => {
-                        for slug in slugs {
-                            match repo.read_note(&slug) {
-                                Ok(note) => recovered_notes.push(note),
-                                Err(_) => skipped += 1,
-                            }
-                        }
-
-                        let recovered_count = recovered_notes.len();
-                        self.set_notes(recovered_notes);
-                        self.set_status_message(format!(
-                            "loaded {recovered_count} note(s), skipped {skipped} invalid file(s): {error}"
-                        ));
-                    }
-                    Err(list_error) => {
-                        self.set_notes(Vec::new());
-                        self.set_status_message(format!(
-                            "failed to load notes: {error}; fallback also failed: {list_error}"
-                        ));
-                    }
-                }
+                self.set_notes(Vec::new());
+                self.set_status_message(format!("failed to list notes: {error}"));
             }
         }
     }

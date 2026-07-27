@@ -57,11 +57,12 @@ fn list_notes_returns_saved_notes() {
     repo.save_note(&note_two)
         .expect("save note_two should succeed");
 
-    let notes = repo.list_notes().expect("list should succeed");
-    let mut slugs: Vec<String> = notes.into_iter().map(|n| n.slug).collect();
+    let collection = repo.list_notes().expect("list should succeed");
+    let mut slugs: Vec<String> = collection.notes.into_iter().map(|n| n.slug).collect();
     slugs.sort();
 
     assert_eq!(slugs, vec!["alpha".to_string(), "beta".to_string()]);
+    assert!(collection.issues.is_empty());
 }
 
 #[test]
@@ -161,4 +162,32 @@ fn repository_reads_legacy_note_without_updated_at() {
     assert_eq!(note.updated_at, "2026-04-04");
     assert_eq!(note.tags, vec!["legacy"]);
     assert_eq!(note.body.trim_start_matches('\n'), "Legacy body.\n");
+}
+
+#[test]
+fn list_notes_returns_readable_notes_and_malformed_file_issues() {
+    let notes_dir = TempDir::new().expect("failed to create temp dir");
+    let repo = LocalMarkdownRepo::new(&notes_dir);
+
+    let valid = Note {
+        slug: "valid-note".to_string(),
+        title: "Valid Note".to_string(),
+        date: "2026-07-27".to_string(),
+        tags: vec![],
+        updated_at: "2026-07-27".to_string(),
+        body: "Valid body".to_string(),
+    };
+    repo.save_note(&valid).expect("valid note should save");
+    std::fs::write(notes_dir.path().join("broken-note.md"), "not frontmatter")
+        .expect("failed to write malformed note");
+
+    let collection = repo
+        .list_notes()
+        .expect("malformed notes should be collected as issues");
+
+    assert_eq!(collection.notes.len(), 1);
+    assert_eq!(collection.notes[0].slug, "valid-note");
+    assert_eq!(collection.issues.len(), 1);
+    assert_eq!(collection.issues[0].slug, "broken-note");
+    assert!(collection.issues[0].message.contains("No frontmatter"));
 }

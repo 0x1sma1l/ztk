@@ -18,7 +18,7 @@ The project is currently under active development. Its foundations—note storag
 
 - Create notes with optional tags.
 - Generate safe, unique slugs from titles.
-- List stored notes and metadata.
+- List readable notes and warn about malformed files without hiding healthy notes.
 - Render a note's Markdown in the terminal.
 - Edit notes using `$EDITOR`.
 - Delete a note by slug.
@@ -230,7 +230,6 @@ The test suite includes validator and frontmatter unit tests, repository integra
 - Search is not yet exposed as a working command.
 - The TUI currently browses notes but does not create, edit, search, or delete them.
 - Delete has confirmation but no trash/restore workflow yet.
-- One malformed note can still cause some non-TUI list/stat flows to fail.
 - Long TUI previews do not scroll yet.
 - `$EDITOR` values containing arguments, such as `code --wait`, are not yet parsed correctly.
 - The notes directory is tied to the current working directory; configurable repository discovery is planned.

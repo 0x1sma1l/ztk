@@ -1,7 +1,6 @@
 use crate::core::errors::CoreError;
-use crate::core::note::Note;
-use crate::core::repository::NoteRepository;
+use crate::core::repository::{NoteCollection, NoteRepository};
 
-pub fn list_notes<R: NoteRepository>(repo: &R) -> Result<Vec<Note>, CoreError> {
+pub fn list_notes<R: NoteRepository>(repo: &R) -> Result<NoteCollection, CoreError> {
     repo.list_notes()
 }
