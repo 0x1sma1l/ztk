@@ -24,9 +24,9 @@ pub fn delete_note(notes_dir: &Path, slug: &str, force: bool) -> Result<(), AppE
         }
     }
 
-    delete_note_usecase(&repo, slug)?;
+    let entry = delete_note_usecase(&repo, slug)?;
 
-    println!("note deleted: notes/{}.md", slug);
+    println!("note moved to trash: {} (trash id: {})", slug, entry.id);
 
     Ok(())
 }
@@ -37,7 +37,7 @@ fn confirm_delete<R: BufRead, W: Write>(
     slug: &str,
 ) -> io::Result<bool> {
     loop {
-        write!(writer, "Permanently delete notes/{slug}.md? [y/N]: ")?;
+        write!(writer, "Move notes/{slug}.md to recoverable trash? [y/N]: ")?;
         writer.flush()?;
 
         let mut answer = String::new();

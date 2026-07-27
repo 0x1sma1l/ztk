@@ -35,4 +35,7 @@ pub enum AppError {
         "Deletion requires confirmation from an interactive terminal. Re-run with `--force` to delete non-interactively."
     )]
     DeleteConfirmationRequired,
+
+    #[error("Permanent purge requires explicit confirmation. Re-run with `--force`.")]
+    PurgeConfirmationRequired,
 }

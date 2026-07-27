@@ -274,7 +274,7 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
         Line::from("  /             Search notes").style(theme::HELP_TEXT_STYLE),
         Line::from("  n             Create a note").style(theme::HELP_TEXT_STYLE),
         Line::from("  e / t / b     Edit title / tags / body").style(theme::HELP_TEXT_STYLE),
-        Line::from("  d             Delete selected note with confirmation")
+        Line::from("  d             Move selected note to trash with confirmation")
             .style(theme::HELP_TEXT_STYLE),
         Line::from(""),
         Line::from("General").style(theme::HELP_SECTION_STYLE),
@@ -318,7 +318,7 @@ fn render_action_overlay(frame: &mut Frame, app: &App) {
             frame.render_widget(Clear, area);
             frame.render_widget(
                 Paragraph::new(format!(
-                    "Delete {slug}? Press y to confirm, n or Esc to cancel."
+                    "Move {slug} to recoverable trash? Press y to confirm, n or Esc to cancel."
                 ))
                 .block(
                     Block::default()
@@ -514,7 +514,6 @@ mod tests {
         app.cancel_mode();
         app.begin_delete();
         let delete = rendered_text(&app, 80, 24);
-        assert!(delete.contains("Delete scroll-test?"));
-        assert!(delete.contains("Press y to confirm"));
+        assert!(delete.contains("Move scroll-test to recoverable trash?"));
     }
 }

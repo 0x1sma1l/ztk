@@ -33,7 +33,7 @@ fn stderr(output: &Output) -> String {
 }
 
 #[test]
-fn force_deletes_without_interactive_confirmation() {
+fn force_moves_note_to_recoverable_trash_without_interactive_confirmation() {
     let root = TempDir::new().expect("failed to create temp dir");
     write_note(&root, "delete-me");
     let note_path = root.path().join("notes/delete-me.md");
@@ -41,8 +41,10 @@ fn force_deletes_without_interactive_confirmation() {
     let output = run_delete(&root, "delete-me", true);
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
-    assert!(stdout(&output).contains("note deleted: notes/delete-me.md"));
+    assert!(stdout(&output).contains("note moved to trash: delete-me"));
     assert!(!note_path.exists());
+    let trash = root.path().join("notes/.trash");
+    assert_eq!(fs::read_dir(trash).unwrap().count(), 2);
 }
 
 #[test]

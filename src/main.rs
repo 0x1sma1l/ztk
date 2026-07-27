@@ -6,7 +6,7 @@ mod tui;
 
 use clap::Parser;
 
-use args::{Cli, Command};
+use args::{Cli, Command, TrashAction};
 
 use cli::delete::delete_note;
 use cli::edit::edit_note;
@@ -15,6 +15,7 @@ use cli::list::list_notes;
 use cli::new::create_note;
 use cli::search::search_notes;
 use cli::stats::get_stats;
+use cli::trash;
 use cli::tui::run_tui;
 use cli::update::update_note;
 use cli::view::view_note;
@@ -53,6 +54,11 @@ fn main() {
         Command::Lint { fix } => lint_notes(&notes_dir, *fix),
         Command::Stats => get_stats(&notes_dir),
         Command::Delete { slug, force } => delete_note(&notes_dir, slug, *force),
+        Command::Trash { action } => match action {
+            TrashAction::List => trash::list(&notes_dir),
+            TrashAction::Restore { id } => trash::restore(&notes_dir, id),
+            TrashAction::Purge { id, force } => trash::purge(&notes_dir, id, *force),
+        },
         Command::Tui => {
             if let Err(err) = run_tui(&notes_dir) {
                 eprintln!("TUI error: {}", err);

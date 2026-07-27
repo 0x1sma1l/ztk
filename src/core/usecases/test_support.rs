@@ -112,14 +112,6 @@ impl NoteRepository for InMemoryNoteRepository {
         Ok(self.notes.borrow().keys().cloned().collect())
     }
 
-    fn delete_note(&self, slug: &str) -> Result<(), CoreError> {
-        self.notes
-            .borrow_mut()
-            .remove(slug)
-            .map(|_| ())
-            .ok_or_else(|| CoreError::NoteNotFound(slug.to_string()))
-    }
-
     fn read_raw_note(&self, slug: &str) -> Result<String, CoreError> {
         self.read_note(slug).map(|note| note.body)
     }

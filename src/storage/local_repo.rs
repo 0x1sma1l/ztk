@@ -4,7 +4,9 @@ use std::path::{Path, PathBuf};
 
 use crate::core::errors::CoreError;
 use crate::core::note::Note;
-use crate::core::repository::{NoteCollection, NoteLoadIssue, NoteRepository};
+use crate::core::repository::{
+    NoteCollection, NoteLoadIssue, NoteRepository, TrashCollection, TrashedNote,
+};
 use crate::core::validators::validate_slug;
 use crate::storage::frontmatter::{Frontmatter, build_note_content, parse_frontmatter_and_body};
 
@@ -36,6 +38,25 @@ impl LocalMarkdownRepo {
             fs::create_dir_all(&self.notes_dir)?;
         }
         Ok(())
+    }
+
+    fn trash_dir(&self) -> PathBuf {
+        self.notes_dir.join(".trash")
+    }
+
+    fn validate_trash_id<'a>(&self, id: &'a str) -> Result<&'a str, CoreError> {
+        if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+            return Err(CoreError::InvalidTrashId(id.to_string()));
+        }
+        Ok(id)
+    }
+
+    fn trash_paths(&self, id: &str) -> Result<(PathBuf, PathBuf), CoreError> {
+        let id = self.validate_trash_id(id)?;
+        Ok((
+            self.trash_dir().join(format!("{id}.md")),
+            self.trash_dir().join(format!("{id}.toml")),
+        ))
     }
 }
 
@@ -121,15 +142,121 @@ impl NoteRepository for LocalMarkdownRepo {
         Ok(slugs)
     }
 
-    fn delete_note(&self, slug: &str) -> Result<(), CoreError> {
-        let path = self.note_path(slug)?;
-
-        match fs::remove_file(&path) {
-            Ok(_) => Ok(()),
-            Err(e) if e.kind() == ErrorKind::NotFound => {
-                Err(CoreError::NoteNotFound(String::new()))
+    fn trash_note(&self, slug: &str) -> Result<TrashedNote, CoreError> {
+        let source = self.note_path(slug)?;
+        if !source.is_file() {
+            return Err(CoreError::NoteNotFound(source.display().to_string()));
+        }
+        fs::create_dir_all(self.trash_dir())?;
+        let stamp = chrono::Local::now().format("%Y%m%dT%H%M%S%f").to_string();
+        let mut suffix = 0;
+        let (id, note_path, metadata_path) = loop {
+            let id = if suffix == 0 {
+                format!("{slug}--{stamp}")
+            } else {
+                format!("{slug}--{stamp}-{suffix}")
+            };
+            let (note, metadata) = self.trash_paths(&id)?;
+            if !note.exists() && !metadata.exists() {
+                break (id, note, metadata);
             }
-            Err(e) => Err(CoreError::Io(e)),
+            suffix += 1;
+        };
+        let entry = TrashedNote {
+            id,
+            original_slug: slug.to_string(),
+            deleted_at: chrono::Local::now().to_rfc3339(),
+        };
+        let metadata =
+            toml::to_string(&entry).map_err(|error| std::io::Error::other(error.to_string()))?;
+        fs::write(&metadata_path, metadata)?;
+        if let Err(error) = fs::rename(&source, &note_path) {
+            let _ = fs::remove_file(metadata_path);
+            return Err(CoreError::Io(error));
+        }
+        Ok(entry)
+    }
+
+    fn list_trash(&self) -> Result<TrashCollection, CoreError> {
+        let mut collection = TrashCollection::default();
+        if !self.trash_dir().exists() {
+            return Ok(collection);
+        }
+        for entry in fs::read_dir(self.trash_dir())? {
+            let path = entry?.path();
+            if path.extension().and_then(|value| value.to_str()) != Some("toml") {
+                continue;
+            }
+            let id = path
+                .file_stem()
+                .and_then(|value| value.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let result = fs::read_to_string(&path)
+                .map_err(CoreError::Io)
+                .and_then(|raw| {
+                    toml::from_str::<TrashedNote>(&raw)
+                        .map_err(|error| CoreError::InvalidFrontmatter(error.to_string()))
+                })
+                .and_then(|metadata| {
+                    if metadata.id != id {
+                        return Err(CoreError::InvalidTrashId(metadata.id));
+                    }
+                    if self.trash_paths(&metadata.id)?.0.is_file() {
+                        Ok(metadata)
+                    } else {
+                        Err(CoreError::TrashEntryNotFound(id.clone()))
+                    }
+                });
+            match result {
+                Ok(metadata) => collection.entries.push(metadata),
+                Err(error) => collection.issues.push(NoteLoadIssue {
+                    slug: id,
+                    message: error.to_string(),
+                }),
+            }
+        }
+        collection.entries.sort_by(|a, b| {
+            b.deleted_at
+                .cmp(&a.deleted_at)
+                .then_with(|| a.id.cmp(&b.id))
+        });
+        Ok(collection)
+    }
+
+    fn restore_trash(&self, id: &str) -> Result<Note, CoreError> {
+        let (trash_note, metadata_path) = self.trash_paths(id)?;
+        if !trash_note.is_file() || !metadata_path.is_file() {
+            return Err(CoreError::TrashEntryNotFound(id.to_string()));
+        }
+        let metadata: TrashedNote = toml::from_str(&fs::read_to_string(&metadata_path)?)
+            .map_err(|error| CoreError::InvalidFrontmatter(error.to_string()))?;
+        let destination = self.note_path(&metadata.original_slug)?;
+        if destination.exists() {
+            return Err(CoreError::RestoreCollision {
+                slug: metadata.original_slug,
+            });
+        }
+        self.ensure_notes_dir()?;
+        fs::rename(&trash_note, &destination)?;
+        fs::remove_file(metadata_path)?;
+        self.read_note(&metadata.original_slug)
+    }
+
+    fn purge_trash(&self, id: &str) -> Result<(), CoreError> {
+        let (note, metadata) = self.trash_paths(id)?;
+        if !note.exists() && !metadata.exists() {
+            return Err(CoreError::TrashEntryNotFound(id.to_string()));
+        }
+        match fs::remove_file(note) {
+            Ok(()) => {}
+            Err(error) if error.kind() == ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+        match fs::remove_file(metadata) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(error.into()),
         }
     }
 

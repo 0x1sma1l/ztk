@@ -131,7 +131,7 @@ fn repository_operations_reject_invalid_slugs() {
             Err(CoreError::InvalidSlug(_))
         ));
         assert!(matches!(
-            repo.delete_note(invalid_slug),
+            repo.trash_note(invalid_slug).map(|_| ()),
             Err(CoreError::InvalidSlug(_))
         ));
         assert!(matches!(

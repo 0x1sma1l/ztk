@@ -23,7 +23,7 @@ The project is currently under active development. Its note storage, shared core
 - Edit notes safely using `$VISUAL`/`$EDITOR`, including quoted commands and editor flags.
 - Update titles, tags, or bodies directly without opening an editor.
 - Fuzzy-search note slugs, titles, and tags with deterministic ranking.
-- Delete a note by slug.
+- Move notes to recoverable repository-local trash and restore or purge them explicitly.
 - Lint note metadata and automatically remove duplicate tags.
 - Show the current note count.
 
@@ -120,7 +120,15 @@ Delete a note:
 zet delete rust-ownership --force
 ```
 
-Deletion is permanent. Zet asks for confirmation in an interactive terminal; scripts and redirected invocations must opt in explicitly with `--force`.
+Deletion moves the note into `<notes-dir>/.trash` and is recoverable. Zet asks for confirmation in an interactive terminal; scripts and redirected invocations must opt in with `--force`.
+
+List and restore deleted notes, or explicitly purge one forever:
+
+```bash
+zet trash list
+zet trash restore <trash-id>
+zet trash purge <trash-id> --force
+```
 
 ## Commands
 
@@ -134,7 +142,10 @@ Deletion is permanent. Zet asks for confirmation in an interactive terminal; scr
 | `zet search <query>` | Fuzzy-search note slugs, titles, and tags. |
 | `zet lint [--fix]` | Validate notes and optionally apply supported repairs. |
 | `zet stats` | Display the total number of readable notes. |
-| `zet delete <slug> [--force]` | Permanently delete one note, with confirmation by default. |
+| `zet delete <slug> [--force]` | Move one note to recoverable trash, with confirmation by default. |
+| `zet trash list` | List recoverable trash entries and their deletion times. |
+| `zet trash restore <id>` | Restore an entry if its original slug is free. |
+| `zet trash purge <id> --force` | Permanently remove one trash entry. |
 | `zet tui` | Launch the full-screen terminal interface. |
 
 Run `zet --help` or `zet <command> --help` for command-line help.
@@ -160,7 +171,7 @@ Relative command-line and environment paths resolve from the working directory. 
 
 CLI v1 consists of the commands in the table above. Successful commands exit with status `0`; runtime or data errors exit with status `1`; command-line parsing errors exit with status `2`. Normal results go to stdout, while errors and warnings go to stderr. Collection commands may return healthy results with status `0` while warning that malformed notes were skipped.
 
-Bulk deletion is not part of v1 because deletion remains permanent until the planned trash/restore workflow exists. Tag and date filters are also deferred: search already retrieves notes by tags, while exact filter syntax should be designed together with stable machine-readable output instead of becoming an ad hoc argument set.
+Bulk deletion is not part of v1; single-entry trash operations keep collision and partial-failure behavior understandable before bulk workflows are designed. Tag and date filters are also deferred: search already retrieves notes by tags, while exact filter syntax should be designed together with stable machine-readable output instead of becoming an ad hoc argument set.
 
 ## TUI controls
 
@@ -278,7 +289,6 @@ Zet is available under the [MIT License](LICENSE).
 ## Known limitations
 
 - TUI body input is currently a single-line prompt; use `zet edit <slug>` for comfortable multiline authoring.
-- Delete has confirmation but no trash/restore workflow yet.
 
 ## Roadmap
 
@@ -286,7 +296,7 @@ Near-term work is focused on:
 
 1. Consistent partial-failure handling for malformed notes.
 2. Strict and compatible frontmatter parsing.
-3. Recoverable deletion with trash and restore operations.
+3. Bulk trash management after single-entry workflows stabilize.
 4. Live TUI search backed by the shared core search use case.
 5. Explicit note renaming and full TUI feature parity.
 6. Broader CLI/TUI integration coverage, CI, and packaging.

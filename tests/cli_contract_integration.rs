@@ -22,7 +22,8 @@ fn help_lists_the_complete_cli_v1_command_set() {
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let output = stdout(&output);
     for command in [
-        "new", "list", "edit", "update", "view", "search", "lint", "stats", "delete", "tui",
+        "new", "list", "edit", "update", "view", "search", "lint", "stats", "delete", "trash",
+        "tui",
     ] {
         assert!(output.contains(command), "missing command: {command}");
     }

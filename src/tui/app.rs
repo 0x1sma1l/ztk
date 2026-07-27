@@ -286,10 +286,10 @@ impl App {
         };
         let repo = self.repository();
         match delete::delete_note(&repo, &slug) {
-            Ok(()) => {
+            Ok(entry) => {
                 self.cancel_mode();
                 self.refresh_notes();
-                self.set_status_message(format!("deleted {slug}"));
+                self.set_status_message(format!("moved {slug} to trash ({})", entry.id));
             }
             Err(error) => self.set_status_message(format!("error: {error}")),
         }

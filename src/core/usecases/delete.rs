@@ -1,8 +1,12 @@
-use crate::core::{errors::CoreError, repository::NoteRepository, validators::validate_slug};
+use crate::core::{
+    errors::CoreError,
+    repository::{NoteRepository, TrashedNote},
+    validators::validate_slug,
+};
 
-pub fn delete_note<R: NoteRepository>(repo: &R, slug: &str) -> Result<(), CoreError> {
+pub fn delete_note<R: NoteRepository>(repo: &R, slug: &str) -> Result<TrashedNote, CoreError> {
     let slug = validate_slug(slug)?;
-    repo.delete_note(slug)
+    repo.trash_note(slug)
 }
 
 #[cfg(test)]
@@ -27,7 +31,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_note_deletes_existing_note() {
+    fn delete_note_moves_existing_note_to_trash() {
         let notes_dir = test_notes_dir();
         let repo = LocalMarkdownRepo::new(&notes_dir);
 

@@ -33,4 +33,16 @@ pub enum CoreError {
 
     #[error("Invalid slug: {0}")]
     InvalidSlug(String),
+
+    #[error("Invalid trash ID: {0}")]
+    InvalidTrashId(String),
+
+    #[error("Trash entry not found: {0}")]
+    TrashEntryNotFound(String),
+
+    #[error("Cannot restore `{slug}` because a note with that slug already exists")]
+    RestoreCollision { slug: String },
+
+    #[error("Repository does not support operation: {0}")]
+    UnsupportedRepositoryOperation(&'static str),
 }

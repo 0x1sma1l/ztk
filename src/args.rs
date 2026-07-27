@@ -79,9 +79,29 @@ pub enum Command {
         #[arg(short, long)]
         force: bool,
     },
+    /// List, restore, or permanently purge recoverable deletions.
+    Trash {
+        #[command(subcommand)]
+        action: TrashAction,
+    },
 
     /// Launch the full-screen terminal interface.
     Tui,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum TrashAction {
+    /// List recoverable deleted notes.
+    List,
+    /// Restore a deleted note by trash ID.
+    Restore { id: String },
+    /// Permanently purge one trash entry.
+    Purge {
+        id: String,
+        /// Confirm permanent deletion.
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 #[cfg(test)]
@@ -114,7 +134,8 @@ mod tests {
         assert_eq!(
             names,
             [
-                "new", "list", "edit", "update", "view", "search", "lint", "stats", "delete", "tui"
+                "new", "list", "edit", "update", "view", "search", "lint", "stats", "delete",
+                "trash", "tui"
             ]
         );
     }
