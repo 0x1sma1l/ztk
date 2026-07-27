@@ -46,7 +46,7 @@ The project is currently under active development. Its note storage, shared core
 
 ## Installation
 
-Zet currently builds from source and requires a recent stable Rust toolchain.
+Zet currently builds from source and requires Rust 1.85 or newer.
 
 ```bash
 git clone https://github.com/0x1sma1l/zet.git
@@ -249,6 +249,14 @@ cargo test --all-targets
 ```
 
 The test suite includes validator and frontmatter unit tests, repository integration tests, CLI lint process tests, TUI state/event/render tests, and terminal-cleanup tests.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow, architecture boundaries, test expectations, and bug-report guidance. Pull requests run formatting, Clippy, packaging, and the full test suite on Linux, macOS, and Windows, including the declared Rust 1.85 minimum.
+
+## Packaging and releases
+
+The crate includes crates.io metadata and can be validated locally with `cargo package --locked`. Release builds use thin LTO and strip symbols. The current supported installation path is `cargo install --path .`; publishing to crates.io or attaching downloadable binaries requires an intentional release decision and is not automated yet.
+
+Zet is available under the [MIT License](LICENSE).
 
 ## Known limitations
 

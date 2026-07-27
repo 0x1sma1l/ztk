@@ -2,5 +2,6 @@
 set -euo pipefail
 
 cargo fmt -- --check
-cargo clippy -- -D warnings
-cargo test
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets
+cargo package --locked --allow-dirty
