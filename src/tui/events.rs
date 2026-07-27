@@ -96,9 +96,9 @@ mod tests {
         Note {
             slug: title.to_lowercase(),
             title: title.to_string(),
-            date: "2026-07-27".to_string(),
+            date: "2026-07-27".parse().unwrap(),
             tags: vec![],
-            updated_at: "2026-07-27".to_string(),
+            updated_at: "2026-07-27".parse().unwrap(),
             body: String::new(),
         }
     }

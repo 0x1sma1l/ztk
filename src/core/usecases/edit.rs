@@ -1,8 +1,7 @@
 use crate::core::errors::CoreError;
-use crate::core::note::Note;
+use crate::core::note::{Note, NoteDate};
 use crate::core::repository::NoteRepository;
 use crate::core::validators::{dedup_tags, validate_tag_values};
-use chrono::Local;
 
 #[derive(Debug, Clone, Default)]
 pub struct UpdateNoteRequest {
@@ -22,19 +21,14 @@ pub fn update_note<R: NoteRepository>(
     slug: &str,
     request: UpdateNoteRequest,
 ) -> Result<UpdateNoteResult, CoreError> {
-    update_note_at(
-        repo,
-        slug,
-        request,
-        &Local::now().format("%Y-%m-%d").to_string(),
-    )
+    update_note_at(repo, slug, request, NoteDate::today_local())
 }
 
 fn update_note_at<R: NoteRepository>(
     repo: &R,
     slug: &str,
     request: UpdateNoteRequest,
-    updated_at: &str,
+    updated_at: NoteDate,
 ) -> Result<UpdateNoteResult, CoreError> {
     let mut note = repo.read_note(slug)?;
 
@@ -76,7 +70,7 @@ fn update_note_at<R: NoteRepository>(
     if let Some(body) = request.body {
         note.body = body;
     }
-    note.updated_at = updated_at.to_string();
+    note.updated_at = updated_at;
     repo.save_note(&note)?;
 
     Ok(UpdateNoteResult { note, changed })
@@ -93,7 +87,7 @@ mod tests {
     fn update_can_change_each_structured_field_together() {
         let repo = InMemoryNoteRepository::default();
         let mut existing = note("edit-me");
-        existing.updated_at = "2020-01-01".to_string();
+        existing.updated_at = "2020-01-01".parse().unwrap();
         repo.insert(existing);
 
         let result = update_note_at(
@@ -108,7 +102,7 @@ mod tests {
                 ]),
                 body: Some("Updated body".to_string()),
             },
-            "2026-07-27",
+            "2026-07-27".parse().unwrap(),
         )
         .expect("update should succeed");
 
@@ -118,7 +112,7 @@ mod tests {
         assert_eq!(saved.title, "Updated title");
         assert_eq!(saved.tags, vec!["rust", "cli"]);
         assert_eq!(saved.body, "Updated body");
-        assert_eq!(saved.updated_at, "2026-07-27");
+        assert_eq!(saved.updated_at.to_string(), "2026-07-27");
         assert_eq!(repo.read_calls(), 1);
         assert_eq!(repo.save_calls(), 1);
     }
@@ -142,7 +136,7 @@ mod tests {
             let repo = InMemoryNoteRepository::default();
             repo.insert(note("edit-me"));
             assert!(
-                update_note_at(&repo, "edit-me", request, "2026-07-28")
+                update_note_at(&repo, "edit-me", request, "2026-07-28".parse().unwrap())
                     .unwrap()
                     .changed
             );
@@ -154,11 +148,16 @@ mod tests {
     fn no_op_does_not_save_or_change_updated_at() {
         let repo = InMemoryNoteRepository::default();
         let existing = note("edit-me");
-        let original_updated_at = existing.updated_at.clone();
+        let original_updated_at = existing.updated_at;
         repo.insert(existing);
 
-        let result =
-            update_note_at(&repo, "edit-me", UpdateNoteRequest::default(), "2099-01-01").unwrap();
+        let result = update_note_at(
+            &repo,
+            "edit-me",
+            UpdateNoteRequest::default(),
+            "2099-01-01".parse().unwrap(),
+        )
+        .unwrap();
 
         assert!(!result.changed);
         assert_eq!(result.note.updated_at, original_updated_at);
@@ -179,7 +178,9 @@ mod tests {
         ] {
             let repo = InMemoryNoteRepository::default();
             repo.insert(note("edit-me"));
-            assert!(update_note_at(&repo, "edit-me", request, "2026-07-28").is_err());
+            assert!(
+                update_note_at(&repo, "edit-me", request, "2026-07-28".parse().unwrap()).is_err()
+            );
             assert_eq!(repo.save_calls(), 0);
         }
     }
@@ -189,8 +190,13 @@ mod tests {
         let repo = InMemoryNoteRepository::default();
         repo.fail_reads();
 
-        let error = update_note_at(&repo, "edit-me", UpdateNoteRequest::default(), "2026-07-28")
-            .unwrap_err();
+        let error = update_note_at(
+            &repo,
+            "edit-me",
+            UpdateNoteRequest::default(),
+            "2026-07-28".parse().unwrap(),
+        )
+        .unwrap_err();
 
         assert!(matches!(error, CoreError::Io(_)));
         assert_eq!(repo.save_calls(), 0);
@@ -209,7 +215,7 @@ mod tests {
                 body: Some("changed".into()),
                 ..Default::default()
             },
-            "2026-07-28",
+            "2026-07-28".parse().unwrap(),
         )
         .unwrap_err();
 

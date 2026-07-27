@@ -38,9 +38,9 @@ mod tests {
         let note = Note {
             slug: "delete-me".to_string(),
             title: "Delete Me".to_string(),
-            date: "2026-03-21".to_string(),
+            date: "2026-03-21".parse().unwrap(),
             tags: vec![],
-            updated_at: "2026-03-21".to_string(),
+            updated_at: "2026-03-21".parse().unwrap(),
             body: "body".to_string(),
         };
 

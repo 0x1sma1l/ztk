@@ -400,9 +400,9 @@ mod tests {
         Note {
             slug: title.to_lowercase().replace(' ', "-"),
             title: title.to_string(),
-            date: "2026-04-07".to_string(),
+            date: "2026-04-07".parse().unwrap(),
             tags: vec!["test".to_string()],
-            updated_at: "2026-04-07".to_string(),
+            updated_at: "2026-04-07".parse().unwrap(),
             body: format!("Body for {title}"),
         }
     }

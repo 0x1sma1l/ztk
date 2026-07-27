@@ -1,7 +1,5 @@
-use chrono::Local;
-
 use crate::core::errors::CoreError;
-use crate::core::note::Note;
+use crate::core::note::{Note, NoteDate};
 use crate::core::repository::NoteRepository;
 use crate::core::validators::{slugify, validate_tags};
 
@@ -21,8 +19,8 @@ pub fn create_note<R: NoteRepository>(
 
     let base_slug = slugify(title);
     let slug = unique_slug(repo, &base_slug)?;
-    let date = Local::now().format("%Y-%m-%d").to_string();
-    let updated_at = date.clone();
+    let date = NoteDate::today_local();
+    let updated_at = date;
 
     let note = Note {
         slug,

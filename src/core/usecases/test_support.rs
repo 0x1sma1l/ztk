@@ -121,9 +121,9 @@ pub fn note(slug: &str) -> Note {
     Note {
         slug: slug.to_string(),
         title: "Test Note".to_string(),
-        date: "2026-07-27".to_string(),
+        date: "2026-07-27".parse().unwrap(),
         tags: vec![],
-        updated_at: "2026-07-27".to_string(),
+        updated_at: "2026-07-27".parse().unwrap(),
         body: "Body".to_string(),
     }
 }

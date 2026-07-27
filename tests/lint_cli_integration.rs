@@ -33,6 +33,11 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+fn assert_no_ansi(output: &Output) {
+    assert!(!output.stdout.windows(2).any(|bytes| bytes == b"\x1b["));
+    assert!(!output.stderr.windows(2).any(|bytes| bytes == b"\x1b["));
+}
+
 #[test]
 fn lint_succeeds_when_all_notes_are_clean() {
     let root = TempDir::new().expect("failed to create temp dir");
@@ -41,6 +46,7 @@ fn lint_succeeds_when_all_notes_are_clean() {
     let output = run_lint(&root, false);
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
+    assert_no_ansi(&output);
     assert!(stdout(&output).contains("Done: 1 files, 0 fixed, 0 failed"));
 }
 
@@ -89,6 +95,7 @@ fn lint_with_fix_fails_when_an_unfixable_issue_remains() {
 
     assert!(!output.status.success());
     assert!(stdout(&output).contains("Done: 1 files, 0 fixed, 1 failed"));
+    assert!(stdout(&output).contains("Invalid `date` date `27-07-2026`"));
     assert!(stderr(&output).contains("Lint failed: 1 file(s) contain issues"));
 }
 

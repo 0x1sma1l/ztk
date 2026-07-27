@@ -171,6 +171,8 @@ Relative command-line and environment paths resolve from the working directory. 
 
 CLI v1 consists of the commands in the table above. Successful commands exit with status `0`; runtime or data errors exit with status `1`; command-line parsing errors exit with status `2`. Normal results go to stdout, while errors and warnings go to stderr. Collection commands may return healthy results with status `0` while warning that malformed notes were skipped.
 
+Human output follows a stable stream convention: requested records and successful mutation summaries go to stdout; recoverable diagnostics begin with `warning:` on stderr; fatal errors use stderr and a non-zero status. Redirected output contains no ANSI color sequences. Zet does not currently expose JSON: machine-readable output will be added only with a versioned schema shared across commands, rather than freezing inconsistent ad hoc shapes.
+
 Bulk deletion is not part of v1; single-entry trash operations keep collision and partial-failure behavior understandable before bulk workflows are designed. Tag and date filters are also deferred: search already retrieves notes by tags, while exact filter syntax should be designed together with stable machine-readable output instead of becoming an ad hoc argument set.
 
 ## TUI controls
@@ -216,6 +218,8 @@ Your note starts here.
 Valid slugs contain ASCII letters, digits, and internal hyphens. Storage operations validate slugs before accessing the filesystem.
 
 For compatibility, legacy notes without `updated_at` use their original `date` as the in-memory fallback. Newly saved notes always include `updated_at`.
+
+Both fields are validated calendar dates serialized as `YYYY-MM-DD`. `date` is the note's creation day in the machine's local timezone. `updated_at` is the local calendar day of the last content or metadata change; Zet intentionally stores day precision rather than a timestamp. Invalid legacy values never enter the typed domain model and are reported by `zet lint` with the affected field and value.
 
 Changing a title with `zet update` does not rename the note slug or file. Slugs are stable identifiers; automatic renames could break links and require collision handling. Pass `--tags=` or `--body=` to clear those fields. An update that changes nothing leaves the file and `updated_at` untouched.
 

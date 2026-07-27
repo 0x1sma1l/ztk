@@ -13,6 +13,9 @@ pub enum CoreError {
     #[error("Invalid tags: {0}")]
     InvalidTags(String),
 
+    #[error("Invalid `{field}` date `{value}`. Expected YYYY-MM-DD")]
+    InvalidDate { field: &'static str, value: String },
+
     #[error("Note not found: {0}")]
     NoteNotFound(String),
 

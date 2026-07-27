@@ -1,3 +1,5 @@
+use std::fs;
+
 use tempfile::TempDir;
 
 use zet::core::errors::CoreError;
@@ -13,9 +15,9 @@ fn save_and_read_note_roundtrip() {
     let note = Note {
         slug: "roundtrip-note".to_string(),
         title: "Roundtrip Note".to_string(),
-        date: "2026-04-04".to_string(),
+        date: "2026-04-04".parse().unwrap(),
         tags: vec!["rust".to_string(), "integration".to_string()],
-        updated_at: "2026-04-04".to_string(),
+        updated_at: "2026-04-04".parse().unwrap(),
         body: "\n\n# Roundtrip\n\nBody content.\n".to_string(),
     };
 
@@ -38,17 +40,17 @@ fn list_notes_returns_saved_notes() {
     let note_one = Note {
         slug: "alpha".to_string(),
         title: "Alpha".to_string(),
-        date: "2026-04-04".to_string(),
+        date: "2026-04-04".parse().unwrap(),
         tags: vec![],
-        updated_at: "2026-04-04".to_string(),
+        updated_at: "2026-04-04".parse().unwrap(),
         body: "alpha body".to_string(),
     };
     let note_two = Note {
         slug: "beta".to_string(),
         title: "Beta".to_string(),
-        date: "2026-04-04".to_string(),
+        date: "2026-04-04".parse().unwrap(),
         tags: vec!["tag".to_string()],
-        updated_at: "2026-04-04".to_string(),
+        updated_at: "2026-04-04".parse().unwrap(),
         body: "beta body".to_string(),
     };
 
@@ -95,9 +97,9 @@ fn save_note_rejects_path_traversal_slug() {
     let note = Note {
         slug: "../outside".to_string(),
         title: "Outside".to_string(),
-        date: "2026-07-27".to_string(),
+        date: "2026-07-27".parse().unwrap(),
         tags: vec![],
-        updated_at: "2026-07-27".to_string(),
+        updated_at: "2026-07-27".parse().unwrap(),
         body: "must remain inside notes".to_string(),
     };
 
@@ -158,10 +160,29 @@ fn repository_reads_legacy_note_without_updated_at() {
         .expect("legacy note should remain readable");
 
     assert_eq!(note.title, "Legacy Note");
-    assert_eq!(note.date, "2026-04-04");
-    assert_eq!(note.updated_at, "2026-04-04");
+    assert_eq!(note.date.to_string(), "2026-04-04");
+    assert_eq!(note.updated_at.to_string(), "2026-04-04");
     assert_eq!(note.tags, vec!["legacy"]);
     assert_eq!(note.body.trim_start_matches('\n'), "Legacy body.\n");
+}
+
+#[test]
+fn repository_rejects_invalid_updated_at_with_field_context() {
+    let notes_dir = TempDir::new().unwrap();
+    fs::write(
+        notes_dir.path().join("invalid-updated.md"),
+        "---\ntitle: Invalid Updated\ndate: 2026-07-27\ntags: []\nupdated_at: tomorrow\n---\n\nBody\n",
+    )
+    .unwrap();
+    let repo = LocalMarkdownRepo::new(notes_dir.path());
+
+    let error = repo.read_note("invalid-updated").unwrap_err();
+
+    assert!(
+        error
+            .to_string()
+            .contains("Invalid `updated_at` date `tomorrow`")
+    );
 }
 
 #[test]
@@ -172,9 +193,9 @@ fn list_notes_returns_readable_notes_and_malformed_file_issues() {
     let valid = Note {
         slug: "valid-note".to_string(),
         title: "Valid Note".to_string(),
-        date: "2026-07-27".to_string(),
+        date: "2026-07-27".parse().unwrap(),
         tags: vec![],
-        updated_at: "2026-07-27".to_string(),
+        updated_at: "2026-07-27".parse().unwrap(),
         body: "Valid body".to_string(),
     };
     repo.save_note(&valid).expect("valid note should save");

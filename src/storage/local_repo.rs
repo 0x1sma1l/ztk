@@ -3,7 +3,7 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use crate::core::errors::CoreError;
-use crate::core::note::Note;
+use crate::core::note::{Note, NoteDate};
 use crate::core::repository::{
     NoteCollection, NoteLoadIssue, NoteRepository, TrashCollection, TrashedNote,
 };
@@ -71,9 +71,9 @@ impl NoteRepository for LocalMarkdownRepo {
 
         let frontmatter = Frontmatter {
             title: note.title.clone(),
-            date: note.date.clone(),
+            date: note.date.to_string(),
             tags: note.tags.clone(),
-            updated_at: note.updated_at.clone(),
+            updated_at: note.updated_at.to_string(),
         };
 
         let content = build_note_content(&frontmatter, &note.body)?;
@@ -89,9 +89,9 @@ impl NoteRepository for LocalMarkdownRepo {
         Ok(Note {
             slug: slug.to_string(),
             title: fm.title,
-            date: fm.date,
+            date: parse_note_date("date", &fm.date)?,
             tags: fm.tags,
-            updated_at: fm.updated_at,
+            updated_at: parse_note_date("updated_at", &fm.updated_at)?,
             body,
         })
     }
@@ -268,4 +268,11 @@ impl NoteRepository for LocalMarkdownRepo {
 
         Ok(raw)
     }
+}
+
+fn parse_note_date(field: &'static str, value: &str) -> Result<NoteDate, CoreError> {
+    value.parse().map_err(|_| CoreError::InvalidDate {
+        field,
+        value: value.to_string(),
+    })
 }

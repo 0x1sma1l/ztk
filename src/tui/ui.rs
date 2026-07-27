@@ -123,7 +123,7 @@ fn render_list_pane(frame: &mut Frame, area: Rect, app: &App) {
         .iter()
         .map(|note| {
             let meta = if note.tags.is_empty() {
-                note.date.clone()
+                note.date.to_string()
             } else {
                 format!("{}  [{}]", note.date, note.tags.join(", "))
             };
@@ -430,9 +430,9 @@ mod tests {
         Note {
             slug: "scroll-test".to_string(),
             title: "Scroll Test".to_string(),
-            date: "2026-07-27".to_string(),
+            date: "2026-07-27".parse().unwrap(),
             tags: vec!["unicode".to_string()],
-            updated_at: "2026-07-27".to_string(),
+            updated_at: "2026-07-27".parse().unwrap(),
             body: body.to_string(),
         }
     }
