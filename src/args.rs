@@ -35,6 +35,11 @@ pub enum Command {
         /// Note slug (without .md).
         slug: String,
     },
+    /// Search note slugs, titles, and tags using fuzzy matching.
+    Search {
+        /// Search query.
+        query: String,
+    },
     /// Lint notes for data and formatting issues.
     Lint {
         /// Apply available automatic fixes.

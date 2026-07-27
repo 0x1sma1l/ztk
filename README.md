@@ -21,6 +21,7 @@ The project is currently under active development. Its foundations—note storag
 - List readable notes and warn about malformed files without hiding healthy notes.
 - Render a note's Markdown in the terminal.
 - Edit notes using `$VISUAL`/`$EDITOR`, including quoted commands and editor flags.
+- Fuzzy-search note slugs, titles, and tags with deterministic ranking.
 - Delete a note by slug.
 - Lint note metadata and automatically remove duplicate tags.
 - Show the current note count.
@@ -89,6 +90,7 @@ View or edit a note:
 ```bash
 zet view rust-ownership
 zet edit rust-ownership
+zet search ownership
 ```
 
 Check the note collection:
@@ -121,6 +123,7 @@ Deletion is permanent. Zet asks for confirmation in an interactive terminal; scr
 | `zet list` | List note slugs, dates, and tags. |
 | `zet view <slug>` | Render a note's Markdown body. |
 | `zet edit <slug>` | Open a note in `$VISUAL`/`$EDITOR` and update its modification date. |
+| `zet search <query>` | Fuzzy-search note slugs, titles, and tags. |
 | `zet lint [--fix]` | Validate notes and optionally apply supported repairs. |
 | `zet stats` | Display the total number of readable notes. |
 | `zet delete <slug> [--force]` | Permanently delete one note, with confirmation by default. |
@@ -227,7 +230,6 @@ The test suite includes validator and frontmatter unit tests, repository integra
 
 ## Known limitations
 
-- Search is not yet exposed as a working command.
 - The TUI currently browses notes but does not create, edit, search, or delete them.
 - Delete has confirmation but no trash/restore workflow yet.
 - Long TUI previews do not scroll yet.
@@ -240,7 +242,7 @@ Near-term work is focused on:
 1. Consistent partial-failure handling for malformed notes.
 2. Strict and compatible frontmatter parsing.
 3. Recoverable deletion with trash and restore operations.
-4. Fuzzy search shared by CLI and TUI.
+4. Live TUI search backed by the shared core search use case.
 5. Structured note updates and full TUI feature parity.
 6. Broader CLI/TUI integration coverage, CI, and packaging.
 

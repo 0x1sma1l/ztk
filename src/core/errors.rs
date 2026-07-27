@@ -7,6 +7,9 @@ pub enum CoreError {
     #[error("Title cannot be empty")]
     EmptyTitle,
 
+    #[error("Search query cannot be empty")]
+    EmptySearchQuery,
+
     #[error("Invalid tags: {0}")]
     InvalidTags(String),
 
