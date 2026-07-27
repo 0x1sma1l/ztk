@@ -1803,6 +1803,7 @@ dependencies = [
  "ratatui",
  "serde",
  "serde_yaml",
+ "shlex",
  "tempfile",
  "termimad",
  "thiserror 2.0.18",

@@ -8,7 +8,7 @@ The project is currently under active development. Its foundations—note storag
 
 - **Local first:** your notes stay on disk as readable Markdown.
 - **Terminal first:** create, inspect, edit, lint, and browse without leaving the shell.
-- **Editor friendly:** write note bodies in your configured `$EDITOR`.
+- **Editor friendly:** write note bodies using `$VISUAL`, `$EDITOR`, or the default `vi`.
 - **Script aware:** commands use meaningful exit codes, including lint failures.
 - **Shared core:** CLI and TUI behavior is built on the same domain and storage layers.
 
@@ -20,7 +20,7 @@ The project is currently under active development. Its foundations—note storag
 - Generate safe, unique slugs from titles.
 - List readable notes and warn about malformed files without hiding healthy notes.
 - Render a note's Markdown in the terminal.
-- Edit notes using `$EDITOR`.
+- Edit notes using `$VISUAL`/`$EDITOR`, including quoted commands and editor flags.
 - Delete a note by slug.
 - Lint note metadata and automatically remove duplicate tags.
 - Show the current note count.
@@ -120,7 +120,7 @@ Deletion is permanent. Zet asks for confirmation in an interactive terminal; scr
 | `zet new <title> [--tags <tags>]` | Create a note. Tags are comma separated. |
 | `zet list` | List note slugs, dates, and tags. |
 | `zet view <slug>` | Render a note's Markdown body. |
-| `zet edit <slug>` | Open a note in `$EDITOR` and update its modification date. |
+| `zet edit <slug>` | Open a note in `$VISUAL`/`$EDITOR` and update its modification date. |
 | `zet lint [--fix]` | Validate notes and optionally apply supported repairs. |
 | `zet stats` | Display the total number of readable notes. |
 | `zet delete <slug> [--force]` | Permanently delete one note, with confirmation by default. |
@@ -231,7 +231,6 @@ The test suite includes validator and frontmatter unit tests, repository integra
 - The TUI currently browses notes but does not create, edit, search, or delete them.
 - Delete has confirmation but no trash/restore workflow yet.
 - Long TUI previews do not scroll yet.
-- `$EDITOR` values containing arguments, such as `code --wait`, are not yet parsed correctly.
 - The notes directory is tied to the current working directory; configurable repository discovery is planned.
 
 ## Roadmap

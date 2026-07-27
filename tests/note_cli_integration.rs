@@ -14,6 +14,7 @@ fn zet(root: &TempDir, args: &[&str]) -> Output {
 fn zet_with_editor(root: &TempDir, slug: &str, editor: &str) -> Output {
     Command::new(env!("CARGO_BIN_EXE_zet"))
         .args(["edit", slug])
+        .env_remove("VISUAL")
         .env("EDITOR", editor)
         .current_dir(root.path())
         .output()
@@ -149,4 +150,80 @@ fn edit_reports_a_missing_note_before_launching_editor() {
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Note not found"));
+}
+
+#[test]
+fn visual_takes_precedence_over_editor() {
+    let root = TempDir::new().expect("failed to create temp dir");
+    write_note(&root, "edit-me", "Original body.");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_zet"))
+        .args(["edit", "edit-me"])
+        .env("VISUAL", "true")
+        .env("EDITOR", "false")
+        .current_dir(root.path())
+        .output()
+        .expect("failed to execute zet edit");
+
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+}
+
+#[test]
+fn edit_reports_empty_and_malformed_editor_commands() {
+    let root = TempDir::new().expect("failed to create temp dir");
+    write_note(&root, "edit-me", "Original body.");
+
+    let empty = zet_with_editor(&root, "edit-me", "");
+    assert!(!empty.status.success());
+    assert!(stderr(&empty).contains("$EDITOR is set but empty"));
+
+    let malformed = zet_with_editor(&root, "edit-me", "editor 'unclosed");
+    assert!(!malformed.status.success());
+    assert!(stderr(&malformed).contains("Could not parse $EDITOR"));
+}
+
+#[test]
+fn edit_reports_a_missing_editor_executable() {
+    let root = TempDir::new().expect("failed to create temp dir");
+    write_note(&root, "edit-me", "Original body.");
+
+    let output = zet_with_editor(&root, "edit-me", "zet-editor-that-does-not-exist");
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("Failed to launch editor"));
+    assert!(stderr(&output).contains("zet-editor-that-does-not-exist"));
+}
+
+#[cfg(unix)]
+#[test]
+fn edit_supports_quoted_executable_paths_and_flags() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let root = TempDir::new().expect("failed to create temp dir");
+    write_note(&root, "edit-me", "Original body.");
+    let editor_path = root.path().join("editor with spaces");
+    let argument_log = root.path().join("editor-arguments.txt");
+
+    fs::write(
+        &editor_path,
+        "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$EDITOR_ARGUMENT_LOG\"\n",
+    )
+    .expect("failed to write fake editor");
+    let mut permissions = fs::metadata(&editor_path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&editor_path, permissions).expect("failed to make fake editor executable");
+
+    let editor_command = format!("'{}' --wait --reuse-window", editor_path.display());
+    let output = Command::new(env!("CARGO_BIN_EXE_zet"))
+        .args(["edit", "edit-me"])
+        .env_remove("VISUAL")
+        .env("EDITOR", editor_command)
+        .env("EDITOR_ARGUMENT_LOG", &argument_log)
+        .current_dir(root.path())
+        .output()
+        .expect("failed to execute zet edit");
+
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let arguments = fs::read_to_string(argument_log).expect("fake editor should log arguments");
+    assert_eq!(arguments, "--wait\n--reuse-window\nnotes/edit-me.md\n");
 }
