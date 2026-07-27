@@ -16,6 +16,9 @@ pub enum CoreError {
     #[error("No frontmatter found in note")]
     EmptyFrontmatter,
 
+    #[error("Invalid frontmatter: {0}")]
+    InvalidFrontmatter(String),
+
     #[error("Failed to serialize frontmatter: {0}")]
     FrontmatterSerialize(serde_yaml::Error),
 

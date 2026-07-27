@@ -22,13 +22,7 @@ struct StoredFrontmatter {
 }
 
 pub fn parse_frontmatter_and_body(content: &str) -> Result<(Frontmatter, String), CoreError> {
-    let sections: Vec<&str> = content.splitn(3, "---").collect();
-
-    if sections.len() < 3 {
-        return Err(CoreError::EmptyFrontmatter);
-    }
-
-    let yaml_block = sections[1];
+    let (yaml_block, body) = split_frontmatter(content)?;
     let stored: StoredFrontmatter =
         serde_yaml::from_str(yaml_block).map_err(CoreError::FrontmatterParse)?;
     let updated_at = stored.updated_at.unwrap_or_else(|| stored.date.clone());
@@ -39,7 +33,32 @@ pub fn parse_frontmatter_and_body(content: &str) -> Result<(Frontmatter, String)
         updated_at,
     };
 
-    Ok((frontmatter, sections[2].to_string()))
+    Ok((frontmatter, body.to_string()))
+}
+
+fn split_frontmatter(content: &str) -> Result<(&str, &str), CoreError> {
+    let rest = content
+        .strip_prefix("---\r\n")
+        .or_else(|| content.strip_prefix("---\n"))
+        .ok_or(CoreError::EmptyFrontmatter)?;
+
+    let mut offset = 0;
+    for segment in rest.split_inclusive('\n') {
+        let line = segment.strip_suffix('\n').unwrap_or(segment);
+        let line = line.strip_suffix('\r').unwrap_or(line);
+
+        if line == "---" {
+            let yaml = &rest[..offset];
+            let body = &rest[offset + "---".len()..];
+            return Ok((yaml, body));
+        }
+
+        offset += segment.len();
+    }
+
+    Err(CoreError::InvalidFrontmatter(
+        "missing closing `---` delimiter".to_string(),
+    ))
 }
 
 pub fn build_note_content(frontmatter: &Frontmatter, body: &str) -> Result<String, CoreError> {
@@ -89,15 +108,7 @@ mod tests {
 
     #[test]
     fn parse_frontmatter_returns_error_for_invalid_yaml() {
-        let content = "\
-    ---
-    title: Valid
-    date: [not-a-string
-    tags: [rust]
-    ---
-
-    Body
-    ";
+        let content = "---\ntitle: Valid\ndate: [not-a-string\ntags: [rust]\n---\n\nBody\n";
         let err = parse_frontmatter_and_body(content).unwrap_err();
 
         match err {
@@ -145,5 +156,68 @@ mod tests {
             parse_frontmatter_and_body(content).expect("null should use compatibility fallback");
 
         assert_eq!(frontmatter.updated_at, "2026-04-04");
+    }
+
+    #[test]
+    fn parser_requires_frontmatter_to_start_on_the_first_line() {
+        let content = "intro\n---\ntitle: Misplaced\ndate: 2026-07-27\ntags: []\n---\n\nBody\n";
+
+        let error = parse_frontmatter_and_body(content).unwrap_err();
+
+        assert!(matches!(error, CoreError::EmptyFrontmatter));
+    }
+
+    #[test]
+    fn parser_reports_a_missing_closing_delimiter() {
+        let content = "---\ntitle: Unclosed\ndate: 2026-07-27\ntags: []\nBody\n";
+
+        let error = parse_frontmatter_and_body(content).unwrap_err();
+
+        assert!(matches!(
+            error,
+            CoreError::InvalidFrontmatter(message)
+                if message == "missing closing `---` delimiter"
+        ));
+    }
+
+    #[test]
+    fn parser_supports_crlf_without_changing_body_line_endings() {
+        let content = "---\r\ntitle: Windows\r\ndate: 2026-07-27\r\ntags: []\r\nupdated_at: 2026-07-27\r\n---\r\n\r\nBody\r\n";
+
+        let (frontmatter, body) =
+            parse_frontmatter_and_body(content).expect("CRLF note should parse");
+
+        assert_eq!(frontmatter.title, "Windows");
+        assert_eq!(body, "\r\n\r\nBody\r\n");
+    }
+
+    #[test]
+    fn horizontal_rules_in_body_are_preserved() {
+        let content = "---\ntitle: Rules\ndate: 2026-07-27\ntags: []\nupdated_at: 2026-07-27\n---\n\nBefore\n\n---\n\nAfter\n";
+
+        let (_, body) = parse_frontmatter_and_body(content).expect("note should parse");
+
+        assert_eq!(body, "\n\nBefore\n\n---\n\nAfter\n");
+    }
+
+    #[test]
+    fn delimiter_must_be_exactly_three_dashes_on_its_own_line() {
+        let content = "---\ntitle: Exact Delimiter\ndate: 2026-07-27\ntags: []\nupdated_at: 2026-07-27\n----\nBody\n";
+
+        let error = parse_frontmatter_and_body(content).unwrap_err();
+
+        assert!(matches!(error, CoreError::InvalidFrontmatter(_)));
+    }
+
+    #[test]
+    fn parser_accepts_a_closing_delimiter_at_end_of_file() {
+        let content =
+            "---\ntitle: No Body\ndate: 2026-07-27\ntags: []\nupdated_at: 2026-07-27\n---";
+
+        let (frontmatter, body) =
+            parse_frontmatter_and_body(content).expect("empty body should parse");
+
+        assert_eq!(frontmatter.title, "No Body");
+        assert!(body.is_empty());
     }
 }
