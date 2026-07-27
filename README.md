@@ -2,7 +2,7 @@
 
 Zet is a local-first, keyboard-driven Markdown note manager for the terminal. It keeps notes as ordinary files, provides scriptable CLI commands, and includes a full-screen TUI for fast browsing.
 
-The project is currently under active development. Its foundations—note storage, core use cases, CLI workflows, validation, and TUI navigation—are working, while search and full TUI editing are still being built.
+The project is currently under active development. Its note storage, core use cases, validation, and CLI v1 workflows are working, while full TUI editing is still being built.
 
 ## Why Zet?
 
@@ -133,6 +133,12 @@ Deletion is permanent. Zet asks for confirmation in an interactive terminal; scr
 | `zet tui` | Launch the full-screen terminal interface. |
 
 Run `zet --help` or `zet <command> --help` for command-line help.
+
+### CLI v1 contract
+
+CLI v1 consists of the commands in the table above. Successful commands exit with status `0`; runtime or data errors exit with status `1`; command-line parsing errors exit with status `2`. Normal results go to stdout, while errors and warnings go to stderr. Collection commands may return healthy results with status `0` while warning that malformed notes were skipped.
+
+Bulk deletion is not part of v1 because deletion remains permanent until the planned trash/restore workflow exists. Tag and date filters are also deferred: search already retrieves notes by tags, while exact filter syntax should be designed together with stable machine-readable output instead of becoming an ad hoc argument set.
 
 ## TUI controls
 

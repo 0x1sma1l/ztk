@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 #[command(
     about = "Local-first, terminal-first Markdown note manager",
     long_about = "Zet is a local-first, keyboard-driven note tool for creating, viewing, editing, linting, and managing Markdown notes from the terminal.",
-    after_help = "Examples:\n  zet new \"Rust Ownership\" --tags rust,learning\n  zet list\n  zet view rust-ownership\n  zet edit rust-ownership\n  zet lint\n  zet lint --fix\n  zet delete rust-ownership\n  zet stats\n  zet tui"
+    after_help = "Examples:\n  zet new \"Rust Ownership\" --tags rust,learning\n  zet list\n  zet view rust-ownership\n  zet edit rust-ownership\n  zet update rust-ownership --tags rust,learning\n  zet search ownership\n  zet lint\n  zet lint --fix\n  zet delete rust-ownership\n  zet stats\n  zet tui"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -96,5 +96,37 @@ mod tests {
             lint.get_about().map(ToString::to_string),
             Some("Lint notes for data and formatting issues".to_string())
         );
+    }
+
+    #[test]
+    fn cli_v1_command_set_is_explicit() {
+        let command = Cli::command();
+        let names = command
+            .get_subcommands()
+            .map(|command| command.get_name())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            names,
+            [
+                "new", "list", "edit", "update", "view", "search", "lint", "stats", "delete", "tui"
+            ]
+        );
+    }
+
+    #[test]
+    fn every_cli_v1_command_has_help_text() {
+        let command = Cli::command();
+
+        for subcommand in command
+            .get_subcommands()
+            .filter(|command| command.get_name() != "help")
+        {
+            assert!(
+                subcommand.get_about().is_some(),
+                "{} should have command help",
+                subcommand.get_name()
+            );
+        }
     }
 }
