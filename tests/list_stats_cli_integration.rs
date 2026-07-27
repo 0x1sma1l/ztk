@@ -79,3 +79,17 @@ fn list_distinguishes_all_unreadable_notes_from_an_empty_repository() {
     assert!(stdout(&empty).contains("No notes found."));
     assert!(stderr(&empty).is_empty());
 }
+
+#[test]
+fn list_and_stats_fail_when_notes_path_is_not_a_directory() {
+    let root = TempDir::new().expect("failed to create temp dir");
+    fs::write(root.path().join("notes"), "this path should be a directory")
+        .expect("failed to create invalid notes path");
+
+    for command in ["list", "stats"] {
+        let output = run(&root, command);
+
+        assert!(!output.status.success(), "{command} should fail");
+        assert!(stderr(&output).contains("I/O error"));
+    }
+}
