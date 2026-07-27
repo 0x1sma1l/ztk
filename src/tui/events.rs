@@ -10,7 +10,7 @@ pub fn handle_crossterm_events(app: &mut App) -> Result<()> {
         // it's important to check KeyEventKind::Press to avoid handling key release events
         Event::Key(key) if key.kind == KeyEventKind::Press => on_key_event(app, key),
         Event::Mouse(_) => {}
-        Event::Resize(_, _) => {}
+        Event::Resize(cols, rows) => app.handle_resize(cols, rows),
         _ => {}
     }
     Ok(())
@@ -18,10 +18,79 @@ pub fn handle_crossterm_events(app: &mut App) -> Result<()> {
 
 /// Handles the key events and updates the state of [`App`].
 fn on_key_event(app: &mut App, key: KeyEvent) {
+    if key.code == KeyCode::Esc && app.show_help() {
+        app.toggle_help();
+        return;
+    }
+
     match (key.modifiers, key.code) {
         (_, KeyCode::Esc | KeyCode::Char('q'))
         | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => app.quit(),
-        // Add other key handlers here.
+        (_, KeyCode::Char('h' | '?')) => app.toggle_help(),
+        (_, KeyCode::Down | KeyCode::Char('j')) => app.select_next(),
+        (_, KeyCode::Up | KeyCode::Char('k')) => app.select_previous(),
+        (_, KeyCode::Home | KeyCode::Char('g')) => app.select_first(),
+        (_, KeyCode::End | KeyCode::Char('G')) => app.select_last(),
+        (_, KeyCode::Char('r')) => app.refresh_notes(),
         _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    use super::on_key_event;
+    use crate::core::note::Note;
+    use crate::tui::app::App;
+
+    fn note(title: &str) -> Note {
+        Note {
+            slug: title.to_lowercase(),
+            title: title.to_string(),
+            date: "2026-07-27".to_string(),
+            tags: vec![],
+            updated_at: "2026-07-27".to_string(),
+            body: String::new(),
+        }
+    }
+
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
+
+    #[test]
+    fn navigation_keys_update_selection() {
+        let mut app = App::default();
+        app.set_notes(vec![note("First"), note("Second"), note("Third")]);
+
+        on_key_event(&mut app, key(KeyCode::Char('j')));
+        assert_eq!(app.selected_index(), Some(1));
+
+        on_key_event(&mut app, key(KeyCode::Down));
+        assert_eq!(app.selected_index(), Some(2));
+
+        on_key_event(&mut app, key(KeyCode::Char('k')));
+        assert_eq!(app.selected_index(), Some(1));
+
+        on_key_event(&mut app, key(KeyCode::Home));
+        assert_eq!(app.selected_index(), Some(0));
+
+        on_key_event(&mut app, key(KeyCode::Char('G')));
+        assert_eq!(app.selected_index(), Some(2));
+    }
+
+    #[test]
+    fn help_keys_toggle_help_and_escape_closes_it() {
+        let mut app = App::default();
+
+        on_key_event(&mut app, key(KeyCode::Char('?')));
+        assert!(app.show_help());
+
+        on_key_event(&mut app, key(KeyCode::Esc));
+        assert!(!app.show_help());
+
+        on_key_event(&mut app, key(KeyCode::Char('h')));
+        assert!(app.show_help());
     }
 }
