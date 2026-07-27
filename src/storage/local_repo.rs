@@ -141,12 +141,4 @@ impl NoteRepository for LocalMarkdownRepo {
 
         Ok(raw)
     }
-
-    // fn write_raw_note(&self, slug: &str, content: &str) -> Result<(), CoreError> {
-    //     self.ensure_note_exists(slug)?;
-
-    //     let path = self.note_path(slug);
-    //     fs::write(path, content)?;
-    //     Ok(())
-    // }
 }

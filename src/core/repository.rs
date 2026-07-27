@@ -22,5 +22,4 @@ pub trait NoteRepository {
     fn list_note_slugs(&self) -> Result<Vec<String>, CoreError>;
     fn delete_note(&self, slug: &str) -> Result<(), CoreError>;
     fn read_raw_note(&self, slug: &str) -> Result<String, CoreError>;
-    // fn write_raw_note(&self, slug: &str, content: &str) -> Result<(), CoreError>;
 }
