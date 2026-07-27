@@ -2,8 +2,8 @@ use std::path::Path;
 use termimad::MadSkin;
 
 use crate::errors::AppError;
-use zet::core::usecases::read as read_usecase;
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::usecases::read as read_usecase;
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 pub fn view_note(notes_dir: &Path, slug: &str) -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::new(notes_dir);

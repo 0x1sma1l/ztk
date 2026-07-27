@@ -27,7 +27,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("system clock before unix epoch")
             .as_nanos();
-        std::env::temp_dir().join(format!("zet-delete-tests-{}-{}", std::process::id(), nanos))
+        std::env::temp_dir().join(format!("ztk-delete-tests-{}-{}", std::process::id(), nanos))
     }
 
     #[test]

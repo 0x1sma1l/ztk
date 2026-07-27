@@ -21,11 +21,13 @@ fn write_broken_note(root: &TempDir) {
 }
 
 fn run(root: &TempDir, command: &str) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_zet"))
+    Command::new(env!("CARGO_BIN_EXE_ztk"))
         .arg(command)
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
         .current_dir(root.path())
         .output()
-        .expect("failed to execute zet command")
+        .expect("failed to execute ztk command")
 }
 
 fn stdout(output: &Output) -> String {
@@ -90,6 +92,6 @@ fn list_and_stats_fail_when_notes_path_is_not_a_directory() {
         let output = run(&root, command);
 
         assert!(!output.status.success(), "{command} should fail");
-        assert!(stderr(&output).contains("I/O error"));
+        assert!(stderr(&output).contains("failed to create notes directory"));
     }
 }

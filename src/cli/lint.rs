@@ -1,7 +1,7 @@
 use crate::errors::AppError;
-use zet::core::repository::NoteRepository;
-use zet::core::usecases::lint::{LintIssue, lint_note_by_slug};
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::repository::NoteRepository;
+use ztk::core::usecases::lint::{LintIssue, lint_note_by_slug};
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 use colored::Colorize;
 use std::path::Path;

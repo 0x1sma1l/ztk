@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use crate::errors::AppError;
-use zet::core::usecases::trash;
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::usecases::trash;
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 pub fn list(notes_dir: &Path) -> Result<(), AppError> {
     let collection = trash::list_trash(&LocalMarkdownRepo::new(notes_dir))?;

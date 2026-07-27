@@ -2,10 +2,10 @@ use std::fs;
 
 use tempfile::TempDir;
 
-use zet::core::errors::CoreError;
-use zet::core::note::Note;
-use zet::core::repository::NoteRepository;
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::errors::CoreError;
+use ztk::core::note::Note;
+use ztk::core::repository::NoteRepository;
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 #[test]
 fn save_and_read_note_roundtrip() {

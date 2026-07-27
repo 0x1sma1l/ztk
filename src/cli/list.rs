@@ -1,8 +1,8 @@
 use crate::errors::AppError;
 use std::path::Path;
-use zet::core::repository::NoteLoadIssue;
-use zet::core::usecases::list as list_usecase;
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::repository::NoteLoadIssue;
+use ztk::core::usecases::list as list_usecase;
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 pub fn list_notes(notes_dir: &Path) -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::new(notes_dir);
@@ -10,7 +10,7 @@ pub fn list_notes(notes_dir: &Path) -> Result<(), AppError> {
 
     if collection.notes.is_empty() {
         if collection.issues.is_empty() {
-            println!("No notes found. Try creating one first with `zet new <title>`.");
+            println!("No notes found. Try creating one first with `ztk new <title>`.");
         } else {
             println!("No readable notes found.");
         }
@@ -39,7 +39,7 @@ fn print_load_warnings(issues: &[NoteLoadIssue]) {
 
     if !issues.is_empty() {
         eprintln!(
-            "warning: skipped {} unreadable note(s); run `zet lint` for a complete integrity check",
+            "warning: skipped {} unreadable note(s); run `ztk lint` for a complete integrity check",
             issues.len()
         );
     }

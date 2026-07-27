@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::config::ConfigError;
-use zet::core::errors::CoreError;
+use ztk::core::errors::CoreError;
 
 #[derive(Debug, Error)]
 pub enum AppError {

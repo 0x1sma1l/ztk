@@ -1,10 +1,10 @@
-# Zet
+# Ztk
 
-Zet is a local-first, keyboard-driven Markdown note manager for the terminal. It keeps notes as ordinary files, provides scriptable CLI commands, and includes a full-screen TUI for fast browsing.
+Ztk is a local-first, keyboard-driven Markdown note manager for the terminal. It keeps notes as ordinary files, provides scriptable CLI commands, and includes a full-screen TUI for fast browsing.
 
 The project is currently under active development. Its note storage, shared core use cases, CLI v1 workflows, and keyboard-driven TUI mutations are working.
 
-## Why Zet?
+## Why Ztk?
 
 - **Local first:** your notes stay on disk as readable Markdown.
 - **Terminal first:** create, inspect, edit, lint, and browse without leaving the shell.
@@ -46,18 +46,18 @@ The project is currently under active development. Its note storage, shared core
 
 ## Installation
 
-Zet currently builds from source and requires Rust 1.85 or newer.
+Ztk currently builds from source and requires Rust 1.85 or newer.
 
 ```bash
-git clone https://github.com/0x1sma1l/zet.git
-cd zet
+git clone https://github.com/0x1sma1l/ztk.git
+cd ztk
 cargo build --release
 ```
 
 The binary will be available at:
 
 ```text
-target/release/zet
+target/release/ztk
 ```
 
 You can also install it directly from the local checkout:
@@ -66,11 +66,17 @@ You can also install it directly from the local checkout:
 cargo install --path .
 ```
 
-By default, Zet stores notes in `notes/` under the current working directory. Repository configuration can make that location independent of where the command is run.
+After it is published on crates.io, install it by package name:
+
+```bash
+cargo install ztk
+```
+
+By default, Ztk stores notes in a stable per-user data directory and creates it automatically on first run. You can choose another location with `--notes-dir`, `ZTK_NOTES_DIR`, or the config file described below.
 
 ## Quick start
 
-During development, pass Zet's arguments after Cargo's `--` separator:
+During development, pass Ztk's arguments after Cargo's `--` separator:
 
 ```bash
 cargo run -- list
@@ -82,96 +88,96 @@ Use `cargo run --quiet -- <command>` when you do not want Cargo's build output. 
 Create a note:
 
 ```bash
-zet new "Rust Ownership" --tags rust,learning
+ztk new "Rust Ownership" --tags rust,learning
 ```
 
 List notes:
 
 ```bash
-zet list
+ztk list
 ```
 
 View or edit a note:
 
 ```bash
-zet view rust-ownership
-zet edit rust-ownership
-zet update rust-ownership --title "Ownership in Rust" --tags rust,learning
-zet search ownership
+ztk view rust-ownership
+ztk edit rust-ownership
+ztk update rust-ownership --title "Ownership in Rust" --tags rust,learning
+ztk search ownership
 ```
 
 Check the note collection:
 
 ```bash
-zet lint
-zet lint --fix
-zet stats
+ztk lint
+ztk lint --fix
+ztk stats
 ```
 
 Launch the TUI:
 
 ```bash
-zet tui
+ztk tui
 ```
 
 Delete a note:
 
 ```bash
-zet delete rust-ownership --force
+ztk delete rust-ownership --force
 ```
 
-Deletion moves the note into `<notes-dir>/.trash` and is recoverable. Zet asks for confirmation in an interactive terminal; scripts and redirected invocations must opt in with `--force`.
+Deletion moves the note into `<notes-dir>/.trash` and is recoverable. Ztk asks for confirmation in an interactive terminal; scripts and redirected invocations must opt in with `--force`.
 
 List and restore deleted notes, or explicitly purge one forever:
 
 ```bash
-zet trash list
-zet trash restore <trash-id>
-zet trash purge <trash-id> --force
+ztk trash list
+ztk trash restore <trash-id>
+ztk trash purge <trash-id> --force
 ```
 
 ## Commands
 
 | Command | Description |
 | --- | --- |
-| `zet new <title> [--tags <tags>]` | Create a note. Tags are comma separated. |
-| `zet list` | List note slugs, dates, and tags. |
-| `zet view <slug>` | Render a note's Markdown body. |
-| `zet edit <slug>` | Open a note in `$VISUAL`/`$EDITOR` and update its modification date. |
-| `zet update <slug> [--title ...] [--tags ...] [--body ...]` | Update selected note fields without opening an editor. |
-| `zet search <query>` | Fuzzy-search note slugs, titles, and tags. |
-| `zet lint [--fix]` | Validate notes and optionally apply supported repairs. |
-| `zet stats` | Display the total number of readable notes. |
-| `zet delete <slug> [--force]` | Move one note to recoverable trash, with confirmation by default. |
-| `zet trash list` | List recoverable trash entries and their deletion times. |
-| `zet trash restore <id>` | Restore an entry if its original slug is free. |
-| `zet trash purge <id> --force` | Permanently remove one trash entry. |
-| `zet tui` | Launch the full-screen terminal interface. |
+| `ztk new <title> [--tags <tags>]` | Create a note. Tags are comma separated. |
+| `ztk list` | List note slugs, dates, and tags. |
+| `ztk view <slug>` | Render a note's Markdown body. |
+| `ztk edit <slug>` | Open a note in `$VISUAL`/`$EDITOR` and update its modification date. |
+| `ztk update <slug> [--title ...] [--tags ...] [--body ...]` | Update selected note fields without opening an editor. |
+| `ztk search <query>` | Fuzzy-search note slugs, titles, and tags. |
+| `ztk lint [--fix]` | Validate notes and optionally apply supported repairs. |
+| `ztk stats` | Display the total number of readable notes. |
+| `ztk delete <slug> [--force]` | Move one note to recoverable trash, with confirmation by default. |
+| `ztk trash list` | List recoverable trash entries and their deletion times. |
+| `ztk trash restore <id>` | Restore an entry if its original slug is free. |
+| `ztk trash purge <id> --force` | Permanently remove one trash entry. |
+| `ztk tui` | Launch the full-screen terminal interface. |
 
-Run `zet --help` or `zet <command> --help` for command-line help.
+Run `ztk --help` or `ztk <command> --help` for command-line help.
 
 ## Notes directory configuration
 
-Zet resolves one notes directory at startup and passes it to both CLI and TUI operations. Sources have this precedence:
+Ztk resolves one notes directory at startup and passes it to both CLI and TUI operations. Sources have this precedence:
 
 1. `--notes-dir <path>`
-2. `ZET_NOTES_DIR`
+2. `ZTK_NOTES_DIR`
 3. `notes_dir` in the config file
-4. `notes/` under the current working directory
+4. `$XDG_DATA_HOME/ztk/notes`, `%LOCALAPPDATA%/ztk/notes`, or `$HOME/.local/share/ztk/notes`
 
-Set `ZET_CONFIG` to use a specific config file. Otherwise Zet checks `$XDG_CONFIG_HOME/zet/config.toml`, `%APPDATA%/zet/config.toml`, or `$HOME/.config/zet/config.toml`, as appropriate. A config file contains:
+Set `ZTK_CONFIG` to use a specific config file. Otherwise Ztk checks `$XDG_CONFIG_HOME/ztk/config.toml`, `%APPDATA%/ztk/config.toml`, or `$HOME/.config/ztk/config.toml`, as appropriate. A config file contains:
 
 ```toml
 notes_dir = "/absolute/path/to/notes"
 ```
 
-Relative command-line and environment paths resolve from the working directory. Relative config values resolve from the directory containing the config file. The notes directory may not exist yet; a command that creates a note will create it. The TUI header displays the active repository path.
+Relative command-line and environment paths resolve from the working directory. Relative config values resolve from the directory containing the config file. Ztk creates the resolved notes directory automatically when it starts. The TUI header displays the active repository path.
 
 ### CLI v1 contract
 
 CLI v1 consists of the commands in the table above. Successful commands exit with status `0`; runtime or data errors exit with status `1`; command-line parsing errors exit with status `2`. Normal results go to stdout, while errors and warnings go to stderr. Collection commands may return healthy results with status `0` while warning that malformed notes were skipped.
 
-Human output follows a stable stream convention: requested records and successful mutation summaries go to stdout; recoverable diagnostics begin with `warning:` on stderr; fatal errors use stderr and a non-zero status. Redirected output contains no ANSI color sequences. Zet does not currently expose JSON: machine-readable output will be added only with a versioned schema shared across commands, rather than freezing inconsistent ad hoc shapes.
+Human output follows a stable stream convention: requested records and successful mutation summaries go to stdout; recoverable diagnostics begin with `warning:` on stderr; fatal errors use stderr and a non-zero status. Redirected output contains no ANSI color sequences. Ztk does not currently expose JSON: machine-readable output will be added only with a versioned schema shared across commands, rather than freezing inconsistent ad hoc shapes.
 
 Bulk deletion is not part of v1; single-entry trash operations keep collision and partial-failure behavior understandable before bulk workflows are designed. Tag and date filters are also deferred: search already retrieves notes by tags, while exact filter syntax should be designed together with stable machine-readable output instead of becoming an ad hoc argument set.
 
@@ -219,9 +225,9 @@ Valid slugs contain ASCII letters, digits, and internal hyphens. Storage operati
 
 For compatibility, legacy notes without `updated_at` use their original `date` as the in-memory fallback. Newly saved notes always include `updated_at`.
 
-Both fields are validated calendar dates serialized as `YYYY-MM-DD`. `date` is the note's creation day in the machine's local timezone. `updated_at` is the local calendar day of the last content or metadata change; Zet intentionally stores day precision rather than a timestamp. Invalid legacy values never enter the typed domain model and are reported by `zet lint` with the affected field and value.
+Both fields are validated calendar dates serialized as `YYYY-MM-DD`. `date` is the note's creation day in the machine's local timezone. `updated_at` is the local calendar day of the last content or metadata change; Ztk intentionally stores day precision rather than a timestamp. Invalid legacy values never enter the typed domain model and are reported by `ztk lint` with the affected field and value.
 
-Changing a title with `zet update` does not rename the note slug or file. Slugs are stable identifiers; automatic renames could break links and require collision handling. Pass `--tags=` or `--body=` to clear those fields. An update that changes nothing leaves the file and `updated_at` untouched.
+Changing a title with `ztk update` does not rename the note slug or file. Slugs are stable identifiers; automatic renames could break links and require collision handling. Pass `--tags=` or `--body=` to clear those fields. An update that changes nothing leaves the file and `updated_at` untouched.
 
 ## Lint behavior
 
@@ -232,11 +238,11 @@ The linter currently detects:
 - Duplicate tags, compared case-insensitively.
 - Missing or malformed frontmatter.
 
-`zet lint --fix` currently repairs duplicate tags. It exits non-zero whenever issues remain after the fix pass, making it suitable for scripts and CI.
+`ztk lint --fix` currently repairs duplicate tags. It exits non-zero whenever issues remain after the fix pass, making it suitable for scripts and CI.
 
 ## Architecture
 
-Zet uses a ports-and-adapters structure:
+Ztk uses a ports-and-adapters structure:
 
 ```text
 CLI / TUI
@@ -288,11 +294,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow, architectu
 
 The crate includes crates.io metadata and can be validated locally with `cargo package --locked`. Release builds use thin LTO and strip symbols. The current supported installation path is `cargo install --path .`; publishing to crates.io or attaching downloadable binaries requires an intentional release decision and is not automated yet.
 
-Zet is available under the [MIT License](LICENSE).
+Ztk is available under the [MIT License](LICENSE).
 
 ## Known limitations
 
-- TUI body input is currently a single-line prompt; use `zet edit <slug>` for comfortable multiline authoring.
+- TUI body input is currently a single-line prompt; use `ztk edit <slug>` for comfortable multiline authoring.
 
 ## Roadmap
 
@@ -307,4 +313,4 @@ Near-term work is focused on:
 
 ## Project status
 
-Zet is a learning-driven, pre-1.0 project. File formats and commands are being stabilized deliberately, with regression tests added before or alongside each behavior change.
+Ztk is a learning-driven, pre-1.0 project. File formats and commands are being stabilized deliberately, with regression tests added before or alongside each behavior change.

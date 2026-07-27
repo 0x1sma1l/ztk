@@ -90,7 +90,7 @@ mod tests {
 
     use super::on_key_event;
     use crate::tui::app::App;
-    use zet::core::note::Note;
+    use ztk::core::note::Note;
 
     fn note(title: &str) -> Note {
         Note {

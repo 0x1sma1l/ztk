@@ -115,13 +115,13 @@ mod tests {
 
     #[test]
     fn validate_tags_accepts_valid_tags() {
-        let result = validate_tags("rust, zet_notes, cli-tool").unwrap();
-        assert_eq!(result, vec!["rust", "zet_notes", "cli-tool"]);
+        let result = validate_tags("rust, ztk_notes, cli-tool").unwrap();
+        assert_eq!(result, vec!["rust", "ztk_notes", "cli-tool"]);
     }
 
     #[test]
     fn validate_tags_rejects_invalid_tags() {
-        let result = validate_tags("rust, zet_notes, cli-tool!");
+        let result = validate_tags("rust, ztk_notes, cli-tool!");
         assert!(result.is_err());
     }
 

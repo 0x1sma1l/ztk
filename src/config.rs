@@ -18,6 +18,15 @@ pub enum ConfigError {
         path: PathBuf,
         source: toml::de::Error,
     },
+    #[error(
+        "could not determine a default notes directory; set --notes-dir, ZTK_NOTES_DIR, or notes_dir in the config file"
+    )]
+    DefaultDirectoryUnavailable,
+    #[error("failed to create notes directory `{path}`: {source}")]
+    CreateNotesDirectory {
+        path: PathBuf,
+        source: std::io::Error,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,13 +40,25 @@ pub fn resolve_notes_dir(explicit: Option<PathBuf>) -> Result<PathBuf, ConfigErr
         path: PathBuf::from("."),
         source,
     })?;
-    let environment = env::var_os("ZET_NOTES_DIR").map(PathBuf::from);
+    let environment = env::var_os("ZTK_NOTES_DIR").map(PathBuf::from);
     let config_path = configured_file_path();
-    resolve(explicit, environment, config_path.as_deref(), &cwd)
+    let default = platform_default_notes_dir(
+        env::var_os("XDG_DATA_HOME"),
+        env::var_os("LOCALAPPDATA"),
+        env::var_os("HOME"),
+    );
+    resolve(explicit, environment, config_path.as_deref(), default, &cwd)
+}
+
+pub fn ensure_notes_dir(path: &Path) -> Result<(), ConfigError> {
+    fs::create_dir_all(path).map_err(|source| ConfigError::CreateNotesDirectory {
+        path: path.to_path_buf(),
+        source,
+    })
 }
 
 fn configured_file_path() -> Option<PathBuf> {
-    if let Some(path) = env::var_os("ZET_CONFIG") {
+    if let Some(path) = env::var_os("ZTK_CONFIG") {
         return Some(PathBuf::from(path));
     }
 
@@ -55,15 +76,34 @@ fn platform_config_file(
     home: Option<OsString>,
 ) -> Option<PathBuf> {
     xdg.map(PathBuf::from)
-        .map(|path| path.join("zet/config.toml"))
+        .map(|path| path.join("ztk/config.toml"))
         .or_else(|| {
             app_data
                 .map(PathBuf::from)
-                .map(|path| path.join("zet/config.toml"))
+                .map(|path| path.join("ztk/config.toml"))
         })
         .or_else(|| {
             home.map(PathBuf::from)
-                .map(|path| path.join(".config/zet/config.toml"))
+                .map(|path| path.join(".config/ztk/config.toml"))
+        })
+}
+
+fn platform_default_notes_dir(
+    xdg_data: Option<OsString>,
+    local_app_data: Option<OsString>,
+    home: Option<OsString>,
+) -> Option<PathBuf> {
+    xdg_data
+        .map(PathBuf::from)
+        .map(|path| path.join("ztk/notes"))
+        .or_else(|| {
+            local_app_data
+                .map(PathBuf::from)
+                .map(|path| path.join("ztk/notes"))
+        })
+        .or_else(|| {
+            home.map(PathBuf::from)
+                .map(|path| path.join(".local/share/ztk/notes"))
         })
 }
 
@@ -71,6 +111,7 @@ fn resolve(
     explicit: Option<PathBuf>,
     environment: Option<PathBuf>,
     config_path: Option<&Path>,
+    default: Option<PathBuf>,
     cwd: &Path,
 ) -> Result<PathBuf, ConfigError> {
     if let Some(path) = explicit.or(environment) {
@@ -90,7 +131,7 @@ fn resolve(
         return Ok(resolve_relative(config.notes_dir, base));
     }
 
-    Ok(cwd.join("notes"))
+    default.ok_or(ConfigError::DefaultDirectoryUnavailable)
 }
 
 fn resolve_relative(path: PathBuf, base: &Path) -> PathBuf {
@@ -103,7 +144,7 @@ fn resolve_relative(path: PathBuf, base: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{platform_config_file, resolve};
+    use super::{platform_config_file, platform_default_notes_dir, resolve};
     use std::ffi::OsString;
     use std::fs;
     use std::path::{Path, PathBuf};
@@ -121,6 +162,7 @@ mod tests {
                 Some("explicit".into()),
                 Some("environment".into()),
                 Some(&config_path),
+                Some(root.path().join("default")),
                 root.path()
             )
             .unwrap(),
@@ -131,26 +173,41 @@ mod tests {
                 None,
                 Some("environment".into()),
                 Some(&config_path),
+                Some(root.path().join("default")),
                 root.path()
             )
             .unwrap(),
             root.path().join("environment")
         );
         assert_eq!(
-            resolve(None, None, Some(&config_path), root.path()).unwrap(),
+            resolve(
+                None,
+                None,
+                Some(&config_path),
+                Some(root.path().join("default")),
+                root.path(),
+            )
+            .unwrap(),
             config_path.parent().unwrap().join("from-config")
         );
         assert_eq!(
-            resolve(None, None, None, root.path()).unwrap(),
-            root.path().join("notes")
+            resolve(
+                None,
+                None,
+                None,
+                Some(root.path().join("default")),
+                root.path(),
+            )
+            .unwrap(),
+            root.path().join("default")
         );
     }
 
     #[test]
     fn absolute_and_space_containing_paths_are_preserved() {
-        let path = PathBuf::from("/tmp/zet notes");
+        let path = PathBuf::from("/tmp/ztk notes");
         assert_eq!(
-            resolve(Some(path.clone()), None, None, Path::new("/work")).unwrap(),
+            resolve(Some(path.clone()), None, None, None, Path::new("/work")).unwrap(),
             path
         );
     }
@@ -161,7 +218,7 @@ mod tests {
         for content in ["not toml", "notes_dir = 'notes'\nunknown = true"] {
             let path = root.path().join("config.toml");
             fs::write(&path, content).unwrap();
-            assert!(resolve(None, None, Some(&path), root.path()).is_err());
+            assert!(resolve(None, None, Some(&path), None, root.path()).is_err());
         }
     }
 
@@ -173,7 +230,23 @@ mod tests {
                 Some(OsString::from("/appdata")),
                 Some(OsString::from("/home/user")),
             ),
-            Some(PathBuf::from("/xdg/zet/config.toml"))
+            Some(PathBuf::from("/xdg/ztk/config.toml"))
+        );
+    }
+
+    #[test]
+    fn platform_data_directory_precedence_is_deterministic() {
+        assert_eq!(
+            platform_default_notes_dir(
+                Some(OsString::from("/xdg-data")),
+                Some(OsString::from("/local-app-data")),
+                Some(OsString::from("/home/user")),
+            ),
+            Some(PathBuf::from("/xdg-data/ztk/notes"))
+        );
+        assert_eq!(
+            platform_default_notes_dir(None, None, Some(OsString::from("/home/user"))),
+            Some(PathBuf::from("/home/user/.local/share/ztk/notes"))
         );
     }
 }

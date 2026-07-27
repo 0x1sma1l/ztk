@@ -1,11 +1,11 @@
 use std::{env, ffi::OsString, fs, path::Path, process::Command};
 
 use crate::errors::AppError;
-use zet::core::repository::NoteRepository;
-use zet::core::usecases::edit::{UpdateNoteRequest, update_note};
-use zet::core::validators::validate_slug;
-use zet::storage::frontmatter::parse_frontmatter_and_body;
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::repository::NoteRepository;
+use ztk::core::usecases::edit::{UpdateNoteRequest, update_note};
+use ztk::core::validators::validate_slug;
+use ztk::storage::frontmatter::parse_frontmatter_and_body;
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 pub fn edit_note(notes_dir: &Path, slug: &str) -> Result<(), AppError> {
     let slug = validate_slug(slug)?;
@@ -13,7 +13,7 @@ pub fn edit_note(notes_dir: &Path, slug: &str) -> Result<(), AppError> {
     repo.ensure_note_exists(slug)?;
     let original = repo.read_raw_note(slug)?;
     let temporary = tempfile::Builder::new()
-        .prefix(&format!("zet-{slug}-"))
+        .prefix(&format!("ztk-{slug}-"))
         .suffix(".md")
         .tempfile()?;
     fs::write(temporary.path(), original)?;

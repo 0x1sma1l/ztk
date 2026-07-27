@@ -2,14 +2,14 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "zet", version)]
+#[command(name = "ztk", version)]
 #[command(
     about = "Local-first, terminal-first Markdown note manager",
-    long_about = "Zet is a local-first, keyboard-driven note tool for creating, viewing, editing, linting, and managing Markdown notes from the terminal.",
-    after_help = "Examples:\n  zet new \"Rust Ownership\" --tags rust,learning\n  zet list\n  zet view rust-ownership\n  zet edit rust-ownership\n  zet update rust-ownership --tags rust,learning\n  zet search ownership\n  zet lint\n  zet lint --fix\n  zet delete rust-ownership\n  zet stats\n  zet tui"
+    long_about = "Ztk is a local-first, keyboard-driven note tool for creating, viewing, editing, linting, and managing Markdown notes from the terminal.",
+    after_help = "Examples:\n  ztk new \"Rust Ownership\" --tags rust,learning\n  ztk list\n  ztk view rust-ownership\n  ztk edit rust-ownership\n  ztk update rust-ownership --tags rust,learning\n  ztk search ownership\n  ztk lint\n  ztk lint --fix\n  ztk delete rust-ownership\n  ztk stats\n  ztk tui"
 )]
 pub struct Cli {
-    /// Notes directory. Overrides ZET_NOTES_DIR and the config file.
+    /// Notes directory. Overrides ZTK_NOTES_DIR and the config file.
     #[arg(long, global = true, value_name = "PATH")]
     pub notes_dir: Option<PathBuf>,
 

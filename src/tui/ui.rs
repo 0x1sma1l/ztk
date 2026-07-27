@@ -41,7 +41,7 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         super::app::UiMode::EditBody => "EDIT BODY",
         super::app::UiMode::ConfirmDelete => "CONFIRM DELETE",
     };
-    let title = Line::from(" Zet ").centered().style(theme::TITLE_STYLE);
+    let title = Line::from(" Ztk ").centered().style(theme::TITLE_STYLE);
     let right = format!(
         "Repo: {} | Mode: {mode} | Notes: {}",
         app.notes_dir().display(),
@@ -103,7 +103,7 @@ fn render_list_pane(frame: &mut Frame, area: Rect, app: &App) {
             Paragraph::new(Text::from(vec![
                 Line::from("No notes loaded yet.").style(theme::MUTED_STYLE),
                 Line::from(""),
-                Line::from("Create one with `zet new <title>`, or press `r` to refresh.")
+                Line::from("Create one with `ztk new <title>`, or press `r` to refresh.")
                     .style(theme::MUTED_STYLE),
             ]))
             .block(
@@ -257,7 +257,7 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
 
     let popup_area = centered_rect(70, 60, frame.area());
     let help_text = Text::from(vec![
-        Line::from(" Zet Help ")
+        Line::from(" Ztk Help ")
             .style(theme::HELP_TITLE_STYLE)
             .centered(),
         Line::from(""),
@@ -279,7 +279,7 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
         Line::from(""),
         Line::from("General").style(theme::HELP_SECTION_STYLE),
         Line::from("  h / ?         Toggle this help panel").style(theme::HELP_TEXT_STYLE),
-        Line::from("  q / Esc       Quit Zet TUI").style(theme::HELP_TEXT_STYLE),
+        Line::from("  q / Esc       Quit Ztk TUI").style(theme::HELP_TEXT_STYLE),
         Line::from("  Ctrl-C        Force quit").style(theme::HELP_TEXT_STYLE),
     ]);
 
@@ -403,7 +403,7 @@ mod theme {
 #[cfg(test)]
 mod tests {
     use ratatui::{Terminal, backend::TestBackend, layout::Rect};
-    use zet::core::note::Note;
+    use ztk::core::note::Note;
 
     use super::{preview_metrics, render};
     use crate::tui::app::App;

@@ -3,22 +3,26 @@ use std::process::{Command, Output};
 
 use tempfile::TempDir;
 
-fn zet(root: &TempDir, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_zet"))
+fn ztk(root: &TempDir, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_ztk"))
         .args(args)
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
         .current_dir(root.path())
         .output()
-        .expect("failed to execute zet command")
+        .expect("failed to execute ztk command")
 }
 
-fn zet_with_editor(root: &TempDir, slug: &str, editor: &str) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_zet"))
+fn ztk_with_editor(root: &TempDir, slug: &str, editor: &str) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_ztk"))
         .args(["edit", slug])
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
         .env_remove("VISUAL")
         .env("EDITOR", editor)
         .current_dir(root.path())
         .output()
-        .expect("failed to execute zet edit")
+        .expect("failed to execute ztk edit")
 }
 
 fn stdout(output: &Output) -> String {
@@ -45,7 +49,7 @@ fn write_note(root: &TempDir, slug: &str, body: &str) {
 fn new_creates_a_note_with_validated_metadata() {
     let root = TempDir::new().expect("failed to create temp dir");
 
-    let output = zet(&root, &["new", "Rust Ownership", "--tags", "rust,learning"]);
+    let output = ztk(&root, &["new", "Rust Ownership", "--tags", "rust,learning"]);
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     assert!(stdout(&output).contains("note created: notes/rust-ownership.md"));
@@ -63,8 +67,8 @@ fn new_creates_a_note_with_validated_metadata() {
 fn new_uses_a_deterministic_suffix_when_slug_exists() {
     let root = TempDir::new().expect("failed to create temp dir");
 
-    let first = zet(&root, &["new", "Same Title"]);
-    let second = zet(&root, &["new", "Same Title"]);
+    let first = ztk(&root, &["new", "Same Title"]);
+    let second = ztk(&root, &["new", "Same Title"]);
 
     assert!(first.status.success(), "stderr: {}", stderr(&first));
     assert!(second.status.success(), "stderr: {}", stderr(&second));
@@ -77,7 +81,7 @@ fn new_uses_a_deterministic_suffix_when_slug_exists() {
 fn new_rejects_invalid_tags_without_creating_a_note() {
     let root = TempDir::new().expect("failed to create temp dir");
 
-    let output = zet(&root, &["new", "Invalid Tags", "--tags", "rust,bad!"]);
+    let output = ztk(&root, &["new", "Invalid Tags", "--tags", "rust,bad!"]);
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Invalid tags"));
@@ -89,7 +93,7 @@ fn view_renders_an_existing_note_body() {
     let root = TempDir::new().expect("failed to create temp dir");
     write_note(&root, "view-me", "# Visible Heading\n\nVisible body text.");
 
-    let output = zet(&root, &["view", "view-me"]);
+    let output = ztk(&root, &["view", "view-me"]);
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let output_text = stdout(&output);
@@ -102,11 +106,11 @@ fn view_renders_an_existing_note_body() {
 fn view_reports_missing_and_invalid_slugs() {
     let root = TempDir::new().expect("failed to create temp dir");
 
-    let missing = zet(&root, &["view", "missing"]);
+    let missing = ztk(&root, &["view", "missing"]);
     assert!(!missing.status.success());
     assert!(stderr(&missing).contains("Note not found"));
 
-    let invalid = zet(&root, &["view", "../outside"]);
+    let invalid = ztk(&root, &["view", "../outside"]);
     assert!(!invalid.status.success());
     assert!(stderr(&invalid).contains("Invalid slug"));
 }
@@ -116,7 +120,7 @@ fn update_changes_structured_fields_without_renaming_the_note() {
     let root = TempDir::new().expect("failed to create temp dir");
     write_note(&root, "stable-slug", "Original body.");
 
-    let output = zet(
+    let output = ztk(
         &root,
         &[
             "update",
@@ -146,7 +150,7 @@ fn update_can_clear_tags_and_body() {
     let root = TempDir::new().expect("failed to create temp dir");
     write_note(&root, "clear-me", "Original body.");
 
-    let output = zet(&root, &["update", "clear-me", "--tags=", "--body="]);
+    let output = ztk(&root, &["update", "clear-me", "--tags=", "--body="]);
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let content = fs::read_to_string(root.path().join("notes/clear-me.md")).unwrap();
@@ -161,17 +165,17 @@ fn invalid_or_no_op_updates_do_not_rewrite_the_note() {
     let path = root.path().join("notes/unchanged.md");
     let before = fs::read_to_string(&path).unwrap();
 
-    let invalid_title = zet(&root, &["update", "unchanged", "--title", "   "]);
+    let invalid_title = ztk(&root, &["update", "unchanged", "--title", "   "]);
     assert!(!invalid_title.status.success());
     assert!(stderr(&invalid_title).contains("Title cannot be empty"));
     assert_eq!(fs::read_to_string(&path).unwrap(), before);
 
-    let invalid_tags = zet(&root, &["update", "unchanged", "--tags", "bad!"]);
+    let invalid_tags = ztk(&root, &["update", "unchanged", "--tags", "bad!"]);
     assert!(!invalid_tags.status.success());
     assert!(stderr(&invalid_tags).contains("Invalid tags"));
     assert_eq!(fs::read_to_string(&path).unwrap(), before);
 
-    let no_op = zet(&root, &["update", "unchanged"]);
+    let no_op = ztk(&root, &["update", "unchanged"]);
     assert!(no_op.status.success(), "stderr: {}", stderr(&no_op));
     assert!(stdout(&no_op).contains("note unchanged"));
     assert_eq!(fs::read_to_string(&path).unwrap(), before);
@@ -182,7 +186,7 @@ fn edit_succeeds_when_editor_exits_zero() {
     let root = TempDir::new().expect("failed to create temp dir");
     write_note(&root, "edit-me", "Body before editor.");
 
-    let output = zet_with_editor(&root, "edit-me", "true");
+    let output = ztk_with_editor(&root, "edit-me", "true");
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let content = fs::read_to_string(root.path().join("notes/edit-me.md"))
@@ -198,7 +202,7 @@ fn edit_reports_editor_failure_without_post_processing_note() {
     let note_path = root.path().join("notes/edit-me.md");
     let before = fs::read_to_string(&note_path).expect("setup note should be readable");
 
-    let output = zet_with_editor(&root, "edit-me", "false");
+    let output = ztk_with_editor(&root, "edit-me", "false");
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Editor exited with a non-zero status"));
@@ -212,7 +216,7 @@ fn edit_reports_editor_failure_without_post_processing_note() {
 fn edit_reports_a_missing_note_before_launching_editor() {
     let root = TempDir::new().expect("failed to create temp dir");
 
-    let output = zet_with_editor(&root, "missing", "true");
+    let output = ztk_with_editor(&root, "missing", "true");
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Note not found"));
@@ -223,13 +227,15 @@ fn visual_takes_precedence_over_editor() {
     let root = TempDir::new().expect("failed to create temp dir");
     write_note(&root, "edit-me", "Original body.");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_zet"))
+    let output = Command::new(env!("CARGO_BIN_EXE_ztk"))
         .args(["edit", "edit-me"])
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
         .env("VISUAL", "true")
         .env("EDITOR", "false")
         .current_dir(root.path())
         .output()
-        .expect("failed to execute zet edit");
+        .expect("failed to execute ztk edit");
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
 }
@@ -239,11 +245,11 @@ fn edit_reports_empty_and_malformed_editor_commands() {
     let root = TempDir::new().expect("failed to create temp dir");
     write_note(&root, "edit-me", "Original body.");
 
-    let empty = zet_with_editor(&root, "edit-me", "");
+    let empty = ztk_with_editor(&root, "edit-me", "");
     assert!(!empty.status.success());
     assert!(stderr(&empty).contains("$EDITOR is set but empty"));
 
-    let malformed = zet_with_editor(&root, "edit-me", "editor 'unclosed");
+    let malformed = ztk_with_editor(&root, "edit-me", "editor 'unclosed");
     assert!(!malformed.status.success());
     assert!(stderr(&malformed).contains("Could not parse $EDITOR"));
 }
@@ -253,11 +259,11 @@ fn edit_reports_a_missing_editor_executable() {
     let root = TempDir::new().expect("failed to create temp dir");
     write_note(&root, "edit-me", "Original body.");
 
-    let output = zet_with_editor(&root, "edit-me", "zet-editor-that-does-not-exist");
+    let output = ztk_with_editor(&root, "edit-me", "ztk-editor-that-does-not-exist");
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Failed to launch editor"));
-    assert!(stderr(&output).contains("zet-editor-that-does-not-exist"));
+    assert!(stderr(&output).contains("ztk-editor-that-does-not-exist"));
 }
 
 #[cfg(unix)]
@@ -280,14 +286,16 @@ fn edit_supports_quoted_executable_paths_and_flags() {
     fs::set_permissions(&editor_path, permissions).expect("failed to make fake editor executable");
 
     let editor_command = format!("'{}' --wait --reuse-window", editor_path.display());
-    let output = Command::new(env!("CARGO_BIN_EXE_zet"))
+    let output = Command::new(env!("CARGO_BIN_EXE_ztk"))
         .args(["edit", "edit-me"])
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
         .env_remove("VISUAL")
         .env("EDITOR", editor_command)
         .env("EDITOR_ARGUMENT_LOG", &argument_log)
         .current_dir(root.path())
         .output()
-        .expect("failed to execute zet edit");
+        .expect("failed to execute ztk edit");
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let arguments = fs::read_to_string(argument_log).expect("fake editor should log arguments");
@@ -311,7 +319,7 @@ fn invalid_editor_output_does_not_overwrite_the_original_note() {
     permissions.set_mode(0o755);
     fs::set_permissions(&editor_path, permissions).unwrap();
 
-    let output = zet_with_editor(&root, "edit-me", editor_path.to_str().unwrap());
+    let output = ztk_with_editor(&root, "edit-me", editor_path.to_str().unwrap());
 
     assert!(!output.status.success());
     assert_eq!(fs::read_to_string(note_path).unwrap(), before);

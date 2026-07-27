@@ -1,6 +1,6 @@
-# Contributing to Zet
+# Contributing to Ztk
 
-Thanks for helping improve Zet. Keep changes focused, preserve the local-first file format, and put business rules in `src/core/` rather than duplicating them in CLI or TUI adapters.
+Thanks for helping improve Ztk. Keep changes focused, preserve the local-first file format, and put business rules in `src/core/` rather than duplicating them in CLI or TUI adapters.
 
 ## Development workflow
 

@@ -2,9 +2,9 @@ use std::io::{self, BufRead, IsTerminal, Write};
 use std::path::Path;
 
 use crate::errors::AppError;
-use zet::core::repository::NoteRepository;
-use zet::core::usecases::delete::delete_note as delete_note_usecase;
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::repository::NoteRepository;
+use ztk::core::usecases::delete::delete_note as delete_note_usecase;
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 pub fn delete_note(notes_dir: &Path, slug: &str, force: bool) -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::new(notes_dir);

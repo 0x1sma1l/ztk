@@ -1,7 +1,7 @@
 use crate::errors::AppError;
 use std::path::Path;
-use zet::core::usecases::search as search_usecase;
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::usecases::search as search_usecase;
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 pub fn search_notes(notes_dir: &Path, query: &str) -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::new(notes_dir);
@@ -29,7 +29,7 @@ pub fn search_notes(notes_dir: &Path, query: &str) -> Result<(), AppError> {
     }
     if !results.issues.is_empty() {
         eprintln!(
-            "warning: skipped {} unreadable note(s); run `zet lint` for a complete integrity check",
+            "warning: skipped {} unreadable note(s); run `ztk lint` for a complete integrity check",
             results.issues.len()
         );
     }

@@ -15,14 +15,18 @@ fn write_note(root: &TempDir, slug: &str, title: &str, date: &str, tags: &str) {
 }
 
 fn run_lint(root: &TempDir, fix: bool) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_zet"));
-    command.arg("lint").current_dir(root.path());
+    let mut command = Command::new(env!("CARGO_BIN_EXE_ztk"));
+    command
+        .arg("lint")
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
+        .current_dir(root.path());
 
     if fix {
         command.arg("--fix");
     }
 
-    command.output().expect("failed to execute zet lint")
+    command.output().expect("failed to execute ztk lint")
 }
 
 fn stdout(output: &Output) -> String {

@@ -16,11 +16,13 @@ fn write_note(root: &TempDir, slug: &str, title: &str, tags: &str) {
 }
 
 fn run_search(root: &TempDir, query: &str) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_zet"))
+    Command::new(env!("CARGO_BIN_EXE_ztk"))
         .args(["search", query])
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
         .current_dir(root.path())
         .output()
-        .expect("failed to execute zet search")
+        .expect("failed to execute ztk search")
 }
 
 fn stdout(output: &Output) -> String {

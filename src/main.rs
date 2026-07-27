@@ -29,6 +29,10 @@ fn main() {
             std::process::exit(1);
         }
     };
+    if let Err(error) = config::ensure_notes_dir(&notes_dir) {
+        eprintln!("{error}");
+        std::process::exit(1);
+    }
 
     let result = match &cli.command {
         Command::New { title, tags } => {

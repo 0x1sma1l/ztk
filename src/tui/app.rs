@@ -2,11 +2,11 @@ use color_eyre::Result;
 use ratatui::DefaultTerminal;
 use std::path::PathBuf;
 
-use zet::core::note::Note;
-use zet::core::repository::NoteRepository;
-use zet::core::usecases::list as list_usecase;
-use zet::core::usecases::{create, delete, edit, search};
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::note::Note;
+use ztk::core::repository::NoteRepository;
+use ztk::core::usecases::list as list_usecase;
+use ztk::core::usecases::{create, delete, edit, search};
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 use super::events;
 use super::ui;
@@ -295,7 +295,7 @@ impl App {
         }
     }
 
-    fn submit_create(&mut self) -> Result<(), zet::core::errors::CoreError> {
+    fn submit_create(&mut self) -> Result<(), ztk::core::errors::CoreError> {
         let repo = self.repository();
         let note = create::create_note(&repo, &self.input, None)?;
         let slug = note.slug.clone();
@@ -308,11 +308,11 @@ impl App {
     fn submit_update(
         &mut self,
         request: edit::UpdateNoteRequest,
-    ) -> Result<(), zet::core::errors::CoreError> {
+    ) -> Result<(), ztk::core::errors::CoreError> {
         let slug = self
             .selected_note()
             .map(|note| note.slug.clone())
-            .ok_or_else(|| zet::core::errors::CoreError::NoteNotFound(String::new()))?;
+            .ok_or_else(|| ztk::core::errors::CoreError::NoteNotFound(String::new()))?;
         let repo = self.repository();
         let result = edit::update_note(&repo, &slug, request)?;
         self.cancel_mode();
@@ -325,7 +325,7 @@ impl App {
         Ok(())
     }
 
-    fn submit_search(&mut self) -> Result<(), zet::core::errors::CoreError> {
+    fn submit_search(&mut self) -> Result<(), ztk::core::errors::CoreError> {
         let repo = self.repository();
         let results = search::search_notes(&repo, &self.input)?;
         let notes = results
@@ -371,7 +371,7 @@ impl App {
                         "loaded {note_count} note(s), skipped {skipped} invalid file(s)"
                     ));
                 } else if note_count == 0 {
-                    self.set_status_message("no notes found (use `zet new <title>`)");
+                    self.set_status_message("no notes found (use `ztk new <title>`)");
                 } else {
                     self.set_status_message(format!("loaded {note_count} note(s)"));
                 }
@@ -394,7 +394,7 @@ impl App {
 mod tests {
     use super::{App, UiMode};
     use tempfile::TempDir;
-    use zet::core::note::Note;
+    use ztk::core::note::Note;
 
     fn sample_note(title: &str) -> Note {
         Note {

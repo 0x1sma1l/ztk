@@ -5,16 +5,17 @@ use std::process::{Command, Output};
 use tempfile::TempDir;
 
 fn run(root: &TempDir, args: &[&str], environment: &[(&str, &Path)]) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_zet"));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_ztk"));
     command
         .args(args)
         .current_dir(root.path())
-        .env_remove("ZET_NOTES_DIR")
-        .env_remove("ZET_CONFIG");
+        .env_remove("ZTK_NOTES_DIR")
+        .env_remove("ZTK_CONFIG")
+        .env("XDG_DATA_HOME", root.path().join("data"));
     for (name, value) in environment {
         command.env(name, value);
     }
-    command.output().expect("failed to execute zet")
+    command.output().expect("failed to execute ztk")
 }
 
 fn stderr(output: &Output) -> String {
@@ -37,13 +38,24 @@ fn explicit_notes_dir_wins_and_supports_spaces_and_missing_directories() {
             "new",
             "Configured Note",
         ],
-        &[("ZET_NOTES_DIR", &environment), ("ZET_CONFIG", &config)],
+        &[("ZTK_NOTES_DIR", &environment), ("ZTK_CONFIG", &config)],
     );
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     assert!(explicit.join("configured-note.md").exists());
     assert!(!environment.exists());
     assert!(!root.path().join("config-notes").exists());
+}
+
+#[test]
+fn default_notes_directory_is_stable_and_created_automatically() {
+    let root = TempDir::new().unwrap();
+
+    let output = run(&root, &["list"], &[]);
+
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    assert!(root.path().join("data/ztk/notes").is_dir());
+    assert!(!root.path().join("notes").exists());
 }
 
 #[test]
@@ -57,8 +69,8 @@ fn environment_wins_over_config_and_resolves_from_working_directory() {
         &root,
         &["new", "Environment Note"],
         &[
-            ("ZET_NOTES_DIR", Path::new("from-environment")),
-            ("ZET_CONFIG", &config),
+            ("ZTK_NOTES_DIR", Path::new("from-environment")),
+            ("ZTK_CONFIG", &config),
         ],
     );
 
@@ -78,7 +90,7 @@ fn relative_config_path_is_resolved_beside_the_config_file() {
     fs::create_dir_all(config.parent().unwrap()).unwrap();
     fs::write(&config, "notes_dir = 'configured notes'").unwrap();
 
-    let output = run(&root, &["new", "Config Note"], &[("ZET_CONFIG", &config)]);
+    let output = run(&root, &["new", "Config Note"], &[("ZTK_CONFIG", &config)]);
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     assert!(
@@ -96,13 +108,13 @@ fn malformed_or_missing_explicit_config_is_actionable() {
     let malformed = root.path().join("malformed.toml");
     fs::write(&malformed, "unknown = true").unwrap();
 
-    let invalid = run(&root, &["list"], &[("ZET_CONFIG", &malformed)]);
+    let invalid = run(&root, &["list"], &[("ZTK_CONFIG", &malformed)]);
     assert_eq!(invalid.status.code(), Some(1));
     assert!(stderr(&invalid).contains("invalid config file"));
     assert!(stderr(&invalid).contains("malformed.toml"));
 
     let missing = root.path().join("missing.toml");
-    let absent = run(&root, &["list"], &[("ZET_CONFIG", &missing)]);
+    let absent = run(&root, &["list"], &[("ZTK_CONFIG", &missing)]);
     assert_eq!(absent.status.code(), Some(1));
     assert!(stderr(&absent).contains("failed to read config file"));
 }
@@ -120,7 +132,7 @@ fn configured_path_that_is_a_file_fails_as_a_repository() {
     );
 
     assert_eq!(output.status.code(), Some(1));
-    assert!(stderr(&output).contains("I/O error"));
+    assert!(stderr(&output).contains("failed to create notes directory"));
     assert_eq!(fs::read_to_string(file).unwrap(), "occupied");
 }
 

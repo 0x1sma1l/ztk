@@ -14,14 +14,19 @@ fn write_note(root: &TempDir, slug: &str) {
 }
 
 fn run_delete(root: &TempDir, slug: &str, force: bool) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_zet"));
-    command.arg("delete").arg(slug).current_dir(root.path());
+    let mut command = Command::new(env!("CARGO_BIN_EXE_ztk"));
+    command
+        .arg("delete")
+        .arg(slug)
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
+        .current_dir(root.path());
 
     if force {
         command.arg("--force");
     }
 
-    command.output().expect("failed to execute zet delete")
+    command.output().expect("failed to execute ztk delete")
 }
 
 fn stdout(output: &Output) -> String {

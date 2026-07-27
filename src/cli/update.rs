@@ -1,7 +1,7 @@
 use crate::errors::AppError;
 use std::path::Path;
-use zet::core::usecases::edit::{self, UpdateNoteRequest};
-use zet::storage::local_repo::LocalMarkdownRepo;
+use ztk::core::usecases::edit::{self, UpdateNoteRequest};
+use ztk::storage::local_repo::LocalMarkdownRepo;
 
 pub fn update_note(
     notes_dir: &Path,

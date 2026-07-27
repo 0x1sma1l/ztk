@@ -1,12 +1,12 @@
 [package]
-name = "zet"
+name = "ztk"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 description = "A local-first, keyboard-driven Markdown note manager for the terminal"
 license = "MIT"
-repository = "https://github.com/0x1sma1l/zet"
-homepage = "https://github.com/0x1sma1l/zet"
+repository = "https://github.com/0x1sma1l/ztk"
+homepage = "https://github.com/0x1sma1l/ztk"
 readme = "README.md"
 keywords = ["cli", "markdown", "notes", "tui", "zettelkasten"]
 categories = ["command-line-utilities", "text-editors"]
