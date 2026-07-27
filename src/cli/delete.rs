@@ -1,12 +1,13 @@
 use std::io::{self, BufRead, IsTerminal, Write};
+use std::path::Path;
 
 use crate::errors::AppError;
 use zet::core::repository::NoteRepository;
 use zet::core::usecases::delete::delete_note as delete_note_usecase;
 use zet::storage::local_repo::LocalMarkdownRepo;
 
-pub fn delete_note(slug: &str, force: bool) -> Result<(), AppError> {
-    let repo = LocalMarkdownRepo::default();
+pub fn delete_note(notes_dir: &Path, slug: &str, force: bool) -> Result<(), AppError> {
+    let repo = LocalMarkdownRepo::new(notes_dir);
     repo.ensure_note_exists(slug)?;
 
     if !force {

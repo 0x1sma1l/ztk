@@ -1,9 +1,10 @@
 use crate::errors::AppError;
+use std::path::Path;
 use zet::core::usecases::search as search_usecase;
 use zet::storage::local_repo::LocalMarkdownRepo;
 
-pub fn search_notes(query: &str) -> Result<(), AppError> {
-    let repo = LocalMarkdownRepo::default();
+pub fn search_notes(notes_dir: &Path, query: &str) -> Result<(), AppError> {
+    let repo = LocalMarkdownRepo::new(notes_dir);
     let results = search_usecase::search_notes(&repo, query)?;
 
     if results.matches.is_empty() {

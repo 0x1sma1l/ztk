@@ -1,4 +1,4 @@
-use std::{env, ffi::OsString, fs, process::Command};
+use std::{env, ffi::OsString, fs, path::Path, process::Command};
 
 use crate::errors::AppError;
 use zet::core::repository::NoteRepository;
@@ -7,9 +7,9 @@ use zet::core::validators::validate_slug;
 use zet::storage::frontmatter::parse_frontmatter_and_body;
 use zet::storage::local_repo::LocalMarkdownRepo;
 
-pub fn edit_note(slug: &str) -> Result<(), AppError> {
+pub fn edit_note(notes_dir: &Path, slug: &str) -> Result<(), AppError> {
     let slug = validate_slug(slug)?;
-    let repo = LocalMarkdownRepo::default();
+    let repo = LocalMarkdownRepo::new(notes_dir);
     repo.ensure_note_exists(slug)?;
     let original = repo.read_raw_note(slug)?;
     let temporary = tempfile::Builder::new()

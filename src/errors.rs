@@ -1,9 +1,12 @@
 use thiserror::Error;
 
+use crate::config::ConfigError;
 use zet::core::errors::CoreError;
 
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[error(transparent)]
+    Config(#[from] ConfigError),
     #[error(transparent)]
     Core(#[from] CoreError),
 

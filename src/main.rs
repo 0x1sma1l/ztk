@@ -1,5 +1,6 @@
 mod args;
 mod cli;
+mod config;
 mod errors;
 mod tui;
 
@@ -20,27 +21,40 @@ use cli::view::view_note;
 
 fn main() {
     let cli = Cli::parse();
+    let notes_dir = match config::resolve_notes_dir(cli.notes_dir.clone()) {
+        Ok(path) => path,
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+    };
 
     let result = match &cli.command {
         Command::New { title, tags } => {
             let transformed_title = title.trim_matches(|c| c == '"' || c == '\'');
-            create_note(transformed_title, tags.as_deref())
+            create_note(&notes_dir, transformed_title, tags.as_deref())
         }
-        Command::List => list_notes(),
-        Command::Edit { slug } => edit_note(slug),
+        Command::List => list_notes(&notes_dir),
+        Command::Edit { slug } => edit_note(&notes_dir, slug),
         Command::Update {
             slug,
             title,
             tags,
             body,
-        } => update_note(slug, title.as_deref(), tags.as_deref(), body.as_deref()),
-        Command::View { slug } => view_note(slug),
-        Command::Search { query } => search_notes(query),
-        Command::Lint { fix } => lint_notes(*fix),
-        Command::Stats => get_stats(),
-        Command::Delete { slug, force } => delete_note(slug, *force),
+        } => update_note(
+            &notes_dir,
+            slug,
+            title.as_deref(),
+            tags.as_deref(),
+            body.as_deref(),
+        ),
+        Command::View { slug } => view_note(&notes_dir, slug),
+        Command::Search { query } => search_notes(&notes_dir, query),
+        Command::Lint { fix } => lint_notes(&notes_dir, *fix),
+        Command::Stats => get_stats(&notes_dir),
+        Command::Delete { slug, force } => delete_note(&notes_dir, slug, *force),
         Command::Tui => {
-            if let Err(err) = run_tui() {
+            if let Err(err) = run_tui(&notes_dir) {
                 eprintln!("TUI error: {}", err);
                 std::process::exit(1);
             }

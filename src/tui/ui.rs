@@ -42,7 +42,11 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         super::app::UiMode::ConfirmDelete => "CONFIRM DELETE",
     };
     let title = Line::from(" Zet ").centered().style(theme::TITLE_STYLE);
-    let right = format!("Mode: {mode} | Notes: {}", app.notes().len());
+    let right = format!(
+        "Repo: {} | Mode: {mode} | Notes: {}",
+        app.notes_dir().display(),
+        app.notes().len()
+    );
     frame.render_widget(
         Block::default()
             .borders(Borders::ALL)

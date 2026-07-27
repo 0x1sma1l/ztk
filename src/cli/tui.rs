@@ -1,4 +1,5 @@
 use crate::tui::app::App;
+use std::path::Path;
 
 struct RestoreGuard<F: FnOnce()> {
     restore: Option<F>,
@@ -20,11 +21,11 @@ impl<F: FnOnce()> Drop for RestoreGuard<F> {
     }
 }
 
-pub fn run_tui() -> color_eyre::Result<()> {
+pub fn run_tui(notes_dir: &Path) -> color_eyre::Result<()> {
     color_eyre::install()?;
     let _restore_guard = RestoreGuard::new(ratatui::restore);
     let terminal = ratatui::init();
-    App::new().run(terminal)
+    App::new(notes_dir).run(terminal)
 }
 
 #[cfg(test)]

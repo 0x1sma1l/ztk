@@ -66,7 +66,7 @@ You can also install it directly from the local checkout:
 cargo install --path .
 ```
 
-> Zet currently stores notes in a `notes/` directory relative to the directory from which it is run. Run commands from the same project or notes directory to access the same collection.
+By default, Zet stores notes in `notes/` under the current working directory. Repository configuration can make that location independent of where the command is run.
 
 ## Quick start
 
@@ -138,6 +138,23 @@ Deletion is permanent. Zet asks for confirmation in an interactive terminal; scr
 | `zet tui` | Launch the full-screen terminal interface. |
 
 Run `zet --help` or `zet <command> --help` for command-line help.
+
+## Notes directory configuration
+
+Zet resolves one notes directory at startup and passes it to both CLI and TUI operations. Sources have this precedence:
+
+1. `--notes-dir <path>`
+2. `ZET_NOTES_DIR`
+3. `notes_dir` in the config file
+4. `notes/` under the current working directory
+
+Set `ZET_CONFIG` to use a specific config file. Otherwise Zet checks `$XDG_CONFIG_HOME/zet/config.toml`, `%APPDATA%/zet/config.toml`, or `$HOME/.config/zet/config.toml`, as appropriate. A config file contains:
+
+```toml
+notes_dir = "/absolute/path/to/notes"
+```
+
+Relative command-line and environment paths resolve from the working directory. Relative config values resolve from the directory containing the config file. The notes directory may not exist yet; a command that creates a note will create it. The TUI header displays the active repository path.
 
 ### CLI v1 contract
 
@@ -262,7 +279,6 @@ Zet is available under the [MIT License](LICENSE).
 
 - TUI body input is currently a single-line prompt; use `zet edit <slug>` for comfortable multiline authoring.
 - Delete has confirmation but no trash/restore workflow yet.
-- The notes directory is tied to the current working directory; configurable repository discovery is planned.
 
 ## Roadmap
 

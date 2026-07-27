@@ -1,9 +1,10 @@
 use crate::errors::AppError;
+use std::path::Path;
 use zet::core::usecases::list as list_usecase;
 use zet::storage::local_repo::LocalMarkdownRepo;
 
-pub fn get_stats() -> Result<(), AppError> {
-    let repo = LocalMarkdownRepo::default();
+pub fn get_stats(notes_dir: &Path) -> Result<(), AppError> {
+    let repo = LocalMarkdownRepo::new(notes_dir);
     let collection = list_usecase::list_notes(&repo)?;
     let note_count = collection.notes.len();
     println!("Total notes: {}", note_count);

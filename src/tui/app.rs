@@ -43,8 +43,11 @@ pub struct App {
 
 impl App {
     /// Construct a new instance of [`App`].
-    pub fn new() -> Self {
-        let mut app = Self::default();
+    pub fn new(notes_dir: impl AsRef<std::path::Path>) -> Self {
+        let mut app = Self {
+            notes_dir: notes_dir.as_ref().to_path_buf(),
+            ..Self::default()
+        };
         app.refresh_notes();
         app
     }
@@ -86,6 +89,10 @@ impl App {
 
     pub fn notes(&self) -> &[Note] {
         &self.notes
+    }
+
+    pub fn notes_dir(&self) -> &std::path::Path {
+        &self.notes_dir
     }
 
     pub fn set_notes(&mut self, notes: Vec<Note>) {

@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "zet")]
@@ -8,6 +9,10 @@ use clap::{Parser, Subcommand};
     after_help = "Examples:\n  zet new \"Rust Ownership\" --tags rust,learning\n  zet list\n  zet view rust-ownership\n  zet edit rust-ownership\n  zet update rust-ownership --tags rust,learning\n  zet search ownership\n  zet lint\n  zet lint --fix\n  zet delete rust-ownership\n  zet stats\n  zet tui"
 )]
 pub struct Cli {
+    /// Notes directory. Overrides ZET_NOTES_DIR and the config file.
+    #[arg(long, global = true, value_name = "PATH")]
+    pub notes_dir: Option<PathBuf>,
+
     #[command(subcommand)]
     pub command: Command,
 }

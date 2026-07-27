@@ -1,10 +1,11 @@
 use crate::errors::AppError;
+use std::path::Path;
 use zet::core::repository::NoteLoadIssue;
 use zet::core::usecases::list as list_usecase;
 use zet::storage::local_repo::LocalMarkdownRepo;
 
-pub fn list_notes() -> Result<(), AppError> {
-    let repo = LocalMarkdownRepo::default();
+pub fn list_notes(notes_dir: &Path) -> Result<(), AppError> {
+    let repo = LocalMarkdownRepo::new(notes_dir);
     let collection = list_usecase::list_notes(&repo)?;
 
     if collection.notes.is_empty() {

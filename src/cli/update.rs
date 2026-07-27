@@ -1,14 +1,16 @@
 use crate::errors::AppError;
+use std::path::Path;
 use zet::core::usecases::edit::{self, UpdateNoteRequest};
 use zet::storage::local_repo::LocalMarkdownRepo;
 
 pub fn update_note(
+    notes_dir: &Path,
     slug: &str,
     title: Option<&str>,
     tags: Option<&str>,
     body: Option<&str>,
 ) -> Result<(), AppError> {
-    let repo = LocalMarkdownRepo::default();
+    let repo = LocalMarkdownRepo::new(notes_dir);
     let result = edit::update_note(
         &repo,
         slug,

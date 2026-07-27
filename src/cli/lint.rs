@@ -4,13 +4,14 @@ use zet::core::usecases::lint::{LintIssue, lint_note_by_slug};
 use zet::storage::local_repo::LocalMarkdownRepo;
 
 use colored::Colorize;
+use std::path::Path;
 use std::thread;
 use std::time::Duration;
 
 const DELAY_IN_MILLISECONDS: u64 = 2;
 
-pub fn lint_notes(fix: bool) -> Result<(), AppError> {
-    let repo = LocalMarkdownRepo::default();
+pub fn lint_notes(notes_dir: &Path, fix: bool) -> Result<(), AppError> {
+    let repo = LocalMarkdownRepo::new(notes_dir);
     let slugs = repo.list_note_slugs()?;
     let mut total = 0;
     let mut fixed = 0;
