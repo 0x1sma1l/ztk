@@ -1,10 +1,10 @@
 use std::{env, process::Command};
 
-use crate::core::repository::NoteRepository;
-use crate::core::usecases::edit::update_note_content;
-use crate::core::validators::validate_slug;
 use crate::errors::AppError;
-use crate::storage::local_repo::LocalMarkdownRepo;
+use zet::core::repository::NoteRepository;
+use zet::core::usecases::edit::update_note_content;
+use zet::core::validators::validate_slug;
+use zet::storage::local_repo::LocalMarkdownRepo;
 
 pub fn edit_note(slug: &str) -> Result<(), AppError> {
     let slug = validate_slug(slug)?;

@@ -1,6 +1,6 @@
-use crate::core::usecases::create as create_usecase;
 use crate::errors::AppError;
-use crate::storage::local_repo::LocalMarkdownRepo;
+use zet::core::usecases::create as create_usecase;
+use zet::storage::local_repo::LocalMarkdownRepo;
 
 pub fn create_note(title: &str, tags: Option<&str>) -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::default();

@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::core::errors::CoreError;
+use zet::core::errors::CoreError;
 
 #[derive(Debug, Error)]
 pub enum AppError {

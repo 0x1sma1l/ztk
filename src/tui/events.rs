@@ -41,8 +41,8 @@ mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     use super::on_key_event;
-    use crate::core::note::Note;
     use crate::tui::app::App;
+    use zet::core::note::Note;
 
     fn note(title: &str) -> Note {
         Note {

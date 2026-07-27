@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use crate::storage::frontmatter::parse_frontmatter_and_body;
 use std::{error::Error, fs, path::Path};
+use zet::storage::frontmatter::parse_frontmatter_and_body;
 
 pub fn interactive_search() -> Result<(), Box<dyn Error>> {
     let notes_dir = Path::new("notes");

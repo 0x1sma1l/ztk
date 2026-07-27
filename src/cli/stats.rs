@@ -1,6 +1,6 @@
-use crate::core::usecases::list as list_usecase;
 use crate::errors::AppError;
-use crate::storage::local_repo::LocalMarkdownRepo;
+use zet::core::usecases::list as list_usecase;
+use zet::storage::local_repo::LocalMarkdownRepo;
 
 pub fn get_stats() -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::default();

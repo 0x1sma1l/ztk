@@ -1,6 +1,7 @@
-use crate::core::usecases::list as list_usecase;
 use crate::errors::AppError;
-use crate::storage::local_repo::LocalMarkdownRepo;
+use zet::core::repository::NoteLoadIssue;
+use zet::core::usecases::list as list_usecase;
+use zet::storage::local_repo::LocalMarkdownRepo;
 
 pub fn list_notes() -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::default();
@@ -30,7 +31,7 @@ pub fn list_notes() -> Result<(), AppError> {
     Ok(())
 }
 
-fn print_load_warnings(issues: &[crate::core::repository::NoteLoadIssue]) {
+fn print_load_warnings(issues: &[NoteLoadIssue]) {
     for issue in issues {
         eprintln!("warning: skipped {}.md: {}", issue.slug, issue.message);
     }

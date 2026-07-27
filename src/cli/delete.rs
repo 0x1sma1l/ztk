@@ -1,8 +1,9 @@
 use std::io::{self, BufRead, IsTerminal, Write};
 
-use crate::core::repository::NoteRepository;
-use crate::core::usecases::delete::delete_note as delete_note_usecase;
-use crate::{errors::AppError, storage::local_repo::LocalMarkdownRepo};
+use crate::errors::AppError;
+use zet::core::repository::NoteRepository;
+use zet::core::usecases::delete::delete_note as delete_note_usecase;
+use zet::storage::local_repo::LocalMarkdownRepo;
 
 pub fn delete_note(slug: &str, force: bool) -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::default();

@@ -1,7 +1,7 @@
-use crate::core::repository::NoteRepository;
-use crate::core::usecases::lint::{LintIssue, lint_note_by_slug};
 use crate::errors::AppError;
-use crate::storage::local_repo::LocalMarkdownRepo;
+use zet::core::repository::NoteRepository;
+use zet::core::usecases::lint::{LintIssue, lint_note_by_slug};
+use zet::storage::local_repo::LocalMarkdownRepo;
 
 use colored::Colorize;
 use std::thread;

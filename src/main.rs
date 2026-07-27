@@ -1,8 +1,6 @@
 mod args;
 mod cli;
-mod core;
 mod errors;
-mod storage;
 mod tui;
 
 use clap::Parser;

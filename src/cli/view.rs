@@ -1,8 +1,8 @@
 use termimad::MadSkin;
 
-use crate::core::usecases::read as read_usecase;
 use crate::errors::AppError;
-use crate::storage::local_repo::LocalMarkdownRepo;
+use zet::core::usecases::read as read_usecase;
+use zet::storage::local_repo::LocalMarkdownRepo;
 
 pub fn view_note(slug: &str) -> Result<(), AppError> {
     let repo = LocalMarkdownRepo::default();

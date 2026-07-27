@@ -1,9 +1,9 @@
 use color_eyre::Result;
 use ratatui::DefaultTerminal;
 
-use crate::core::note::Note;
-use crate::core::usecases::list as list_usecase;
-use crate::storage::local_repo::LocalMarkdownRepo;
+use zet::core::note::Note;
+use zet::core::usecases::list as list_usecase;
+use zet::storage::local_repo::LocalMarkdownRepo;
 
 use super::events;
 use super::ui;
@@ -165,7 +165,7 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{App, UiMode};
-    use crate::core::note::Note;
+    use zet::core::note::Note;
 
     fn sample_note(title: &str) -> Note {
         Note {
