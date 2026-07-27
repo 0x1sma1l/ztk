@@ -47,6 +47,10 @@ pub enum Command {
     Delete {
         /// Note slug (without .md).
         slug: String,
+
+        /// Delete without interactive confirmation.
+        #[arg(short, long)]
+        force: bool,
     },
 
     /// Launch the full-screen terminal interface.

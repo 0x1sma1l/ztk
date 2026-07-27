@@ -17,4 +17,9 @@ pub enum AppError {
 
     #[error("Lint failed: {0} file(s) contain issues")]
     LintFailed(usize),
+
+    #[error(
+        "Deletion requires confirmation from an interactive terminal. Re-run with `--force` to delete non-interactively."
+    )]
+    DeleteConfirmationRequired,
 }

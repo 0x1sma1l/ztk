@@ -108,10 +108,10 @@ zet tui
 Delete a note:
 
 ```bash
-zet delete rust-ownership
+zet delete rust-ownership --force
 ```
 
-> Deletion is currently immediate and permanent. Confirmation and recoverable trash are planned; use the command carefully.
+Deletion is permanent. Zet asks for confirmation in an interactive terminal; scripts and redirected invocations must opt in explicitly with `--force`.
 
 ## Commands
 
@@ -123,7 +123,7 @@ zet delete rust-ownership
 | `zet edit <slug>` | Open a note in `$EDITOR` and update its modification date. |
 | `zet lint [--fix]` | Validate notes and optionally apply supported repairs. |
 | `zet stats` | Display the total number of readable notes. |
-| `zet delete <slug>` | Permanently delete one note. |
+| `zet delete <slug> [--force]` | Permanently delete one note, with confirmation by default. |
 | `zet tui` | Launch the full-screen terminal interface. |
 
 Run `zet --help` or `zet <command> --help` for command-line help.
@@ -229,7 +229,7 @@ The test suite includes validator and frontmatter unit tests, repository integra
 
 - Search is not yet exposed as a working command.
 - The TUI currently browses notes but does not create, edit, search, or delete them.
-- Delete has no confirmation or trash/restore workflow yet.
+- Delete has confirmation but no trash/restore workflow yet.
 - One malformed note can still cause some non-TUI list/stat flows to fail.
 - Long TUI previews do not scroll yet.
 - `$EDITOR` values containing arguments, such as `code --wait`, are not yet parsed correctly.
@@ -241,7 +241,7 @@ Near-term work is focused on:
 
 1. Consistent partial-failure handling for malformed notes.
 2. Strict and compatible frontmatter parsing.
-3. Safe deletion with confirmation and an explicit force mode.
+3. Recoverable deletion with trash and restore operations.
 4. Fuzzy search shared by CLI and TUI.
 5. Structured note updates and full TUI feature parity.
 6. Broader CLI/TUI integration coverage, CI, and packaging.

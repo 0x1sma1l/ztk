@@ -31,7 +31,7 @@ fn main() {
         Command::View { slug } => view_note(slug),
         Command::Lint { fix } => lint_notes(*fix),
         Command::Stats => get_stats(),
-        Command::Delete { slug } => delete_note(slug),
+        Command::Delete { slug, force } => delete_note(slug, *force),
         Command::Tui => {
             if let Err(err) = run_tui() {
                 eprintln!("TUI error: {}", err);
