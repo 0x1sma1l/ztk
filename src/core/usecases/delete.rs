@@ -41,12 +41,21 @@ mod tests {
         };
 
         repo.save_note(&note).expect("failed to save setup note");
-        assert!(repo.note_path("delete-me").exists());
+        assert!(
+            repo.note_path("delete-me")
+                .expect("valid slug should produce a path")
+                .exists()
+        );
 
         let result = delete_note(&repo, "delete-me");
 
         assert!(result.is_ok());
-        assert!(!repo.note_path("delete-me").exists());
+        assert!(
+            !repo
+                .note_path("delete-me")
+                .expect("valid slug should produce a path")
+                .exists()
+        );
         let _ = fs::remove_dir_all(&notes_dir);
     }
 

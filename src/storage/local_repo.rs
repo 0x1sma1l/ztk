@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::core::errors::CoreError;
 use crate::core::note::Note;
 use crate::core::repository::NoteRepository;
+use crate::core::validators::validate_slug;
 use crate::storage::frontmatter::{Frontmatter, build_note_content, parse_frontmatter_and_body};
 
 #[derive(Debug, Clone)]
@@ -25,8 +26,9 @@ impl LocalMarkdownRepo {
         }
     }
 
-    pub fn note_path(&self, slug: &str) -> PathBuf {
-        self.notes_dir.join(format!("{}.md", slug))
+    pub fn note_path(&self, slug: &str) -> Result<PathBuf, CoreError> {
+        let slug = validate_slug(slug)?;
+        Ok(self.notes_dir.join(format!("{}.md", slug)))
     }
 
     fn ensure_notes_dir(&self) -> Result<(), CoreError> {
@@ -39,10 +41,11 @@ impl LocalMarkdownRepo {
 
 impl NoteRepository for LocalMarkdownRepo {
     fn note_exists(&self, slug: &str) -> Result<bool, CoreError> {
-        Ok(self.note_path(slug).exists())
+        Ok(self.note_path(slug)?.exists())
     }
 
     fn save_note(&self, note: &Note) -> Result<(), CoreError> {
+        let note_path = self.note_path(&note.slug)?;
         self.ensure_notes_dir()?;
 
         let frontmatter = Frontmatter {
@@ -53,7 +56,7 @@ impl NoteRepository for LocalMarkdownRepo {
         };
 
         let content = build_note_content(&frontmatter, &note.body)?;
-        fs::write(self.note_path(&note.slug), content)?;
+        fs::write(note_path, content)?;
 
         Ok(())
     }
@@ -73,7 +76,7 @@ impl NoteRepository for LocalMarkdownRepo {
     }
 
     fn ensure_note_exists(&self, slug: &str) -> Result<(), CoreError> {
-        let path = self.note_path(slug);
+        let path = self.note_path(slug)?;
         if !path.exists() {
             return Err(CoreError::NoteNotFound(path.display().to_string()));
         }
@@ -113,7 +116,7 @@ impl NoteRepository for LocalMarkdownRepo {
     }
 
     fn delete_note(&self, slug: &str) -> Result<(), CoreError> {
-        let path = self.note_path(slug);
+        let path = self.note_path(slug)?;
 
         match fs::remove_file(&path) {
             Ok(_) => Ok(()),
@@ -127,7 +130,7 @@ impl NoteRepository for LocalMarkdownRepo {
     fn read_raw_note(&self, slug: &str) -> Result<String, CoreError> {
         self.ensure_note_exists(slug)?;
 
-        let path = self.note_path(slug);
+        let path = self.note_path(slug)?;
         let raw = fs::read_to_string(path)?;
 
         Ok(raw)
