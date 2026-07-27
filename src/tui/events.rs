@@ -1,4 +1,4 @@
-use super::app::App;
+use super::app::{App, UiMode};
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 /// Reads the crossterm events and updates the state of [`App`].
@@ -28,6 +28,39 @@ fn on_key_event(app: &mut App, key: KeyEvent) {
         return;
     }
 
+    if app.mode() == UiMode::ConfirmDelete {
+        match key.code {
+            KeyCode::Char('y' | 'Y') => app.confirm_delete(),
+            KeyCode::Char('n' | 'N') | KeyCode::Esc => {
+                app.cancel_mode();
+                app.set_status_message("delete cancelled");
+            }
+            _ => {}
+        }
+        return;
+    }
+
+    if matches!(
+        app.mode(),
+        UiMode::Search
+            | UiMode::CreateTitle
+            | UiMode::EditTitle
+            | UiMode::EditTags
+            | UiMode::EditBody
+    ) {
+        match (key.modifiers, key.code) {
+            (_, KeyCode::Esc) => app.cancel_mode(),
+            (_, KeyCode::Enter) => app.submit_input(),
+            (_, KeyCode::Backspace) => app.pop_input(),
+            (KeyModifiers::CONTROL, KeyCode::Char('u' | 'U')) => app.clear_input(),
+            (KeyModifiers::NONE | KeyModifiers::SHIFT, KeyCode::Char(character)) => {
+                app.push_input(character)
+            }
+            _ => {}
+        }
+        return;
+    }
+
     match (key.modifiers, key.code) {
         (_, KeyCode::Esc | KeyCode::Char('q'))
         | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => app.quit(),
@@ -41,6 +74,12 @@ fn on_key_event(app: &mut App, key: KeyEvent) {
         (_, KeyCode::PageDown) => app.scroll_preview_page_down(),
         (_, KeyCode::PageUp) => app.scroll_preview_page_up(),
         (_, KeyCode::Char('r')) => app.refresh_notes(),
+        (_, KeyCode::Char('/')) => app.begin_input(UiMode::Search),
+        (_, KeyCode::Char('n')) => app.begin_input(UiMode::CreateTitle),
+        (_, KeyCode::Char('e')) => app.begin_input(UiMode::EditTitle),
+        (_, KeyCode::Char('t')) => app.begin_input(UiMode::EditTags),
+        (_, KeyCode::Char('b')) => app.begin_input(UiMode::EditBody),
+        (_, KeyCode::Char('d')) => app.begin_delete(),
         _ => {}
     }
 }
@@ -133,5 +172,37 @@ mod tests {
         assert_eq!(app.preview_scroll(), 6);
         on_key_event(&mut app, key(KeyCode::Char('[')));
         assert_eq!(app.preview_scroll(), 5);
+    }
+
+    #[test]
+    fn input_modes_capture_text_and_escape_cancels() {
+        let mut app = App::default();
+
+        on_key_event(&mut app, key(KeyCode::Char('/')));
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Search);
+        on_key_event(&mut app, key(KeyCode::Char('r')));
+        on_key_event(&mut app, key(KeyCode::Char('u')));
+        on_key_event(&mut app, key(KeyCode::Char('s')));
+        on_key_event(&mut app, key(KeyCode::Char('t')));
+        assert_eq!(app.input(), "rust");
+        on_key_event(&mut app, key(KeyCode::Backspace));
+        assert_eq!(app.input(), "rus");
+        on_key_event(&mut app, key(KeyCode::Esc));
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Normal);
+        assert!(app.input().is_empty());
+    }
+
+    #[test]
+    fn deletion_requires_explicit_confirmation() {
+        let mut app = App::default();
+        app.set_notes(vec![note("First")]);
+
+        on_key_event(&mut app, key(KeyCode::Char('d')));
+        assert_eq!(app.mode(), crate::tui::app::UiMode::ConfirmDelete);
+        on_key_event(&mut app, key(KeyCode::Char('n')));
+
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Normal);
+        assert_eq!(app.notes().len(), 1);
+        assert_eq!(app.status_message(), "delete cancelled");
     }
 }

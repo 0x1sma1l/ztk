@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Margin, Rect},
     prelude::{Color, Modifier, Style},
     text::{Line, Text},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap},
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -16,6 +16,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     render_body(frame, layout[1], app);
     render_footer(frame, layout[2], app);
     render_help_overlay(frame, app);
+    render_action_overlay(frame, app);
 }
 
 fn screen_layout(area: Rect) -> std::rc::Rc<[Rect]> {
@@ -33,6 +34,12 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     let mode = match app.mode() {
         super::app::UiMode::Normal => "NORMAL",
         super::app::UiMode::Help => "HELP",
+        super::app::UiMode::Search => "SEARCH",
+        super::app::UiMode::CreateTitle => "CREATE",
+        super::app::UiMode::EditTitle => "EDIT TITLE",
+        super::app::UiMode::EditTags => "EDIT TAGS",
+        super::app::UiMode::EditBody => "EDIT BODY",
+        super::app::UiMode::ConfirmDelete => "CONFIRM DELETE",
     };
     let title = Line::from(" Zet ").centered().style(theme::TITLE_STYLE);
     let right = format!("Mode: {mode} | Notes: {}", app.notes().len());
@@ -224,7 +231,7 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
     };
     let text = Text::from(vec![
         Line::from(format!(" {status}")).style(theme::STATUS_TEXT_STYLE),
-        Line::from(" q quit | h/? help | j/k move | [/] scroll | PgUp/PgDn page ")
+        Line::from(" n new | e/t/b edit | / search | d delete | h/? help ")
             .style(theme::FOOTER_TEXT_STYLE),
     ]);
 
@@ -260,6 +267,11 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
         Line::from(""),
         Line::from("Data").style(theme::HELP_SECTION_STYLE),
         Line::from("  r             Refresh notes from storage").style(theme::HELP_TEXT_STYLE),
+        Line::from("  /             Search notes").style(theme::HELP_TEXT_STYLE),
+        Line::from("  n             Create a note").style(theme::HELP_TEXT_STYLE),
+        Line::from("  e / t / b     Edit title / tags / body").style(theme::HELP_TEXT_STYLE),
+        Line::from("  d             Delete selected note with confirmation")
+            .style(theme::HELP_TEXT_STYLE),
         Line::from(""),
         Line::from("General").style(theme::HELP_SECTION_STYLE),
         Line::from("  h / ?         Toggle this help panel").style(theme::HELP_TEXT_STYLE),
@@ -281,6 +293,52 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
             )
             .wrap(Wrap { trim: true }),
         popup_area,
+    );
+}
+
+fn render_action_overlay(frame: &mut Frame, app: &App) {
+    use super::app::UiMode;
+
+    let (title, prompt) = match app.mode() {
+        UiMode::Search => (" Search ", "Query"),
+        UiMode::CreateTitle => (" Create note ", "Title"),
+        UiMode::EditTitle => (" Edit title ", "Title"),
+        UiMode::EditTags => (" Edit tags ", "Comma-separated tags"),
+        UiMode::EditBody => (" Edit body ", "Markdown body"),
+        UiMode::ConfirmDelete => {
+            let slug = app
+                .selected_note()
+                .map(|note| note.slug.as_str())
+                .unwrap_or("note");
+            let area = centered_rect(70, 24, frame.area());
+            frame.render_widget(Clear, area);
+            frame.render_widget(
+                Paragraph::new(format!(
+                    "Delete {slug}? Press y to confirm, n or Esc to cancel."
+                ))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Confirm delete "),
+                )
+                .wrap(Wrap { trim: true }),
+                area,
+            );
+            return;
+        }
+        UiMode::Normal | UiMode::Help => return,
+    };
+
+    let area = centered_rect(80, 30, frame.area());
+    frame.render_widget(Clear, area);
+    frame.render_widget(
+        Paragraph::new(format!(
+            "{prompt}:\n{}\n\nEnter submit | Esc cancel | Ctrl-U clear",
+            app.input()
+        ))
+        .block(Block::default().borders(Borders::ALL).title(title))
+        .wrap(Wrap { trim: false }),
+        area,
     );
 }
 
@@ -383,7 +441,7 @@ mod tests {
         let output = rendered_text(&app, 80, 20);
 
         assert!(output.contains("loaded 3 note(s), skipped 1 invalid file(s)"));
-        assert!(output.contains("q quit | h/? help"));
+        assert!(output.contains("n new | e/t/b edit"));
     }
 
     #[test]
@@ -437,5 +495,22 @@ mod tests {
 
             assert_eq!(max_scroll, 0, "body: {body:?}");
         }
+    }
+
+    #[test]
+    fn action_modes_render_prompts_and_confirmation() {
+        let mut app = App::default();
+        app.set_notes(vec![note_with_body("body")]);
+        app.begin_input(crate::tui::app::UiMode::Search);
+        app.push_input('r');
+        let search = rendered_text(&app, 80, 24);
+        assert!(search.contains("Query:"));
+        assert!(search.contains("Enter submit"));
+
+        app.cancel_mode();
+        app.begin_delete();
+        let delete = rendered_text(&app, 80, 24);
+        assert!(delete.contains("Delete scroll-test?"));
+        assert!(delete.contains("Press y to confirm"));
     }
 }

@@ -2,7 +2,7 @@
 
 Zet is a local-first, keyboard-driven Markdown note manager for the terminal. It keeps notes as ordinary files, provides scriptable CLI commands, and includes a full-screen TUI for fast browsing.
 
-The project is currently under active development. Its note storage, core use cases, validation, and CLI v1 workflows are working, while full TUI editing is still being built.
+The project is currently under active development. Its note storage, shared core use cases, CLI v1 workflows, and keyboard-driven TUI mutations are working.
 
 ## Why Zet?
 
@@ -35,6 +35,9 @@ The project is currently under active development. Its note storage, core use ca
 - Jump to the first or last note.
 - Scroll long previews by line or page, including wrapped Unicode content.
 - Switch to a stacked list/preview layout on narrow terminals.
+- Create and fuzzy-search notes without leaving the TUI.
+- Edit the selected note's title, tags, or body through validated core operations.
+- Delete the selected note through an explicit confirmation mode.
 - Refresh notes from disk.
 - Recover readable notes when some files are malformed.
 - View load, refresh, and skipped-file status.
@@ -152,6 +155,10 @@ Bulk deletion is not part of v1 because deletion remains permanent until the pla
 | `G` / `End` | Jump to the last note. |
 | `[` / `]` | Scroll the preview one visual line. |
 | `Page Up` / `Page Down` | Scroll the preview one viewport. |
+| `n` | Create a note by title. |
+| `/` | Search note slugs, titles, and tags. |
+| `e` / `t` / `b` | Edit the selected note's title, tags, or body. |
+| `d` | Request deletion of the selected note; `y` confirms and `n`/`Esc` cancels. |
 | `r` | Reload notes from disk. |
 | `h` / `?` | Toggle the help overlay. |
 | `Esc` | Close help, or quit when help is closed. |
@@ -245,7 +252,7 @@ The test suite includes validator and frontmatter unit tests, repository integra
 
 ## Known limitations
 
-- The TUI currently browses notes but does not create, edit, search, or delete them.
+- TUI body input is currently a single-line prompt; use `zet edit <slug>` for comfortable multiline authoring.
 - Delete has confirmation but no trash/restore workflow yet.
 - The notes directory is tied to the current working directory; configurable repository discovery is planned.
 
