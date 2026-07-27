@@ -139,3 +139,26 @@ fn repository_operations_reject_invalid_slugs() {
         ));
     }
 }
+
+#[test]
+fn repository_reads_legacy_note_without_updated_at() {
+    let notes_dir = TempDir::new().expect("failed to create temp dir");
+    let repo = LocalMarkdownRepo::new(&notes_dir);
+    let legacy_path = notes_dir.path().join("legacy-note.md");
+
+    std::fs::write(
+        legacy_path,
+        "---\ntitle: Legacy Note\ndate: 2026-04-04\ntags: [legacy]\n---\n\nLegacy body.\n",
+    )
+    .expect("failed to write legacy note");
+
+    let note = repo
+        .read_note("legacy-note")
+        .expect("legacy note should remain readable");
+
+    assert_eq!(note.title, "Legacy Note");
+    assert_eq!(note.date, "2026-04-04");
+    assert_eq!(note.updated_at, "2026-04-04");
+    assert_eq!(note.tags, vec!["legacy"]);
+    assert_eq!(note.body.trim_start_matches('\n'), "Legacy body.\n");
+}
