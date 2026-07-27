@@ -35,8 +35,6 @@ pub enum Command {
         /// Note slug (without .md).
         slug: String,
     },
-    /// Launch interactive fuzzy search UI
-    // Search,
     /// Lint notes for data and formatting issues.
     Lint {
         /// Apply available automatic fixes.
@@ -53,4 +51,24 @@ pub enum Command {
 
     /// Launch the full-screen terminal interface.
     Tui,
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::CommandFactory;
+
+    use super::Cli;
+
+    #[test]
+    fn lint_help_describes_lint_only() {
+        let command = Cli::command();
+        let lint = command
+            .find_subcommand("lint")
+            .expect("lint command should be registered");
+
+        assert_eq!(
+            lint.get_about().map(ToString::to_string),
+            Some("Lint notes for data and formatting issues".to_string())
+        );
+    }
 }

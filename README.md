@@ -63,6 +63,15 @@ cargo install --path .
 
 ## Quick start
 
+During development, pass Zet's arguments after Cargo's `--` separator:
+
+```bash
+cargo run -- list
+cargo run -- tui
+```
+
+Use `cargo run --quiet -- <command>` when you do not want Cargo's build output. Do not repeat the binary name after `--`.
+
 Create a note:
 
 ```bash
