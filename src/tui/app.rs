@@ -25,6 +25,9 @@ pub struct App {
     show_help: bool,
     status_message: String,
     mode: UiMode,
+    preview_scroll: u16,
+    preview_max_scroll: u16,
+    preview_page_size: u16,
 }
 
 impl App {
@@ -39,6 +42,10 @@ impl App {
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.running = true;
         while self.running {
+            let size = terminal.size()?;
+            let area = ratatui::layout::Rect::new(0, 0, size.width, size.height);
+            let (max_scroll, page_size) = ui::preview_metrics(&self, area);
+            self.update_preview_metrics(max_scroll, page_size);
             terminal.draw(|frame| ui::render(frame, &self))?;
             events::handle_crossterm_events(&mut self)?;
         }
@@ -57,6 +64,7 @@ impl App {
     pub fn set_notes(&mut self, notes: Vec<Note>) {
         self.notes = notes;
         self.selected_index = if self.notes.is_empty() { None } else { Some(0) };
+        self.reset_preview_scroll();
     }
 
     pub fn selected_index(&self) -> Option<usize> {
@@ -78,6 +86,7 @@ impl App {
             Some(_) => 0,
             None => 0,
         });
+        self.reset_preview_scroll();
     }
 
     pub fn select_previous(&mut self) {
@@ -91,10 +100,12 @@ impl App {
             Some(_) => self.notes.len() - 1,
             None => 0,
         });
+        self.reset_preview_scroll();
     }
 
     pub fn select_first(&mut self) {
         self.selected_index = if self.notes.is_empty() { None } else { Some(0) };
+        self.reset_preview_scroll();
     }
 
     pub fn select_last(&mut self) {
@@ -103,6 +114,45 @@ impl App {
         } else {
             Some(self.notes.len() - 1)
         };
+        self.reset_preview_scroll();
+    }
+
+    pub fn preview_scroll(&self) -> u16 {
+        self.preview_scroll
+    }
+
+    pub fn preview_max_scroll(&self) -> u16 {
+        self.preview_max_scroll
+    }
+
+    pub fn update_preview_metrics(&mut self, max_scroll: u16, page_size: u16) {
+        self.preview_max_scroll = max_scroll;
+        self.preview_page_size = page_size.max(1);
+        self.preview_scroll = self.preview_scroll.min(max_scroll);
+    }
+
+    pub fn scroll_preview_down(&mut self, amount: u16) {
+        self.preview_scroll = self
+            .preview_scroll
+            .saturating_add(amount)
+            .min(self.preview_max_scroll);
+    }
+
+    pub fn scroll_preview_up(&mut self, amount: u16) {
+        self.preview_scroll = self.preview_scroll.saturating_sub(amount);
+    }
+
+    pub fn scroll_preview_page_down(&mut self) {
+        self.scroll_preview_down(self.preview_page_size);
+    }
+
+    pub fn scroll_preview_page_up(&mut self) {
+        self.scroll_preview_up(self.preview_page_size);
+    }
+
+    fn reset_preview_scroll(&mut self) {
+        self.preview_scroll = 0;
+        self.preview_max_scroll = 0;
     }
 
     pub fn show_help(&self) -> bool {
@@ -249,5 +299,46 @@ mod tests {
             app.status_message(),
             "loaded 3 note(s), skipped 1 invalid file(s)"
         );
+    }
+
+    #[test]
+    fn preview_scroll_is_bounded_and_page_aware() {
+        let mut app = App::default();
+        app.update_preview_metrics(12, 5);
+
+        app.scroll_preview_down(3);
+        assert_eq!(app.preview_scroll(), 3);
+        app.scroll_preview_page_down();
+        assert_eq!(app.preview_scroll(), 8);
+        app.scroll_preview_down(u16::MAX);
+        assert_eq!(app.preview_scroll(), 12);
+        app.scroll_preview_page_up();
+        assert_eq!(app.preview_scroll(), 7);
+        app.scroll_preview_up(u16::MAX);
+        assert_eq!(app.preview_scroll(), 0);
+    }
+
+    #[test]
+    fn selection_change_resets_preview_scroll() {
+        let mut app = App::default();
+        app.set_notes(vec![sample_note("First"), sample_note("Second")]);
+        app.update_preview_metrics(20, 5);
+        app.scroll_preview_down(8);
+
+        app.select_next();
+
+        assert_eq!(app.preview_scroll(), 0);
+        assert_eq!(app.preview_max_scroll(), 0);
+    }
+
+    #[test]
+    fn resized_preview_clamps_existing_scroll() {
+        let mut app = App::default();
+        app.update_preview_metrics(20, 5);
+        app.scroll_preview_down(18);
+
+        app.update_preview_metrics(4, 10);
+
+        assert_eq!(app.preview_scroll(), 4);
     }
 }

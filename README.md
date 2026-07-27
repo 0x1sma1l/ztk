@@ -33,6 +33,8 @@ The project is currently under active development. Its note storage, core use ca
 - Preview the selected note and its metadata.
 - Navigate with Vim-style keys or arrow keys.
 - Jump to the first or last note.
+- Scroll long previews by line or page, including wrapped Unicode content.
+- Switch to a stacked list/preview layout on narrow terminals.
 - Refresh notes from disk.
 - Recover readable notes when some files are malformed.
 - View load, refresh, and skipped-file status.
@@ -148,6 +150,8 @@ Bulk deletion is not part of v1 because deletion remains permanent until the pla
 | `k` / `Up` | Select the previous note. |
 | `g` / `Home` | Jump to the first note. |
 | `G` / `End` | Jump to the last note. |
+| `[` / `]` | Scroll the preview one visual line. |
+| `Page Up` / `Page Down` | Scroll the preview one viewport. |
 | `r` | Reload notes from disk. |
 | `h` / `?` | Toggle the help overlay. |
 | `Esc` | Close help, or quit when help is closed. |
@@ -243,7 +247,6 @@ The test suite includes validator and frontmatter unit tests, repository integra
 
 - The TUI currently browses notes but does not create, edit, search, or delete them.
 - Delete has confirmation but no trash/restore workflow yet.
-- Long TUI previews do not scroll yet.
 - The notes directory is tied to the current working directory; configurable repository discovery is planned.
 
 ## Roadmap

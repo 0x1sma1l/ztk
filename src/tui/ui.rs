@@ -1,27 +1,32 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Margin, Rect},
     prelude::{Color, Modifier, Style},
     text::{Line, Text},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
 };
+use unicode_width::UnicodeWidthStr;
 
 use super::app::App;
 
 pub fn render(frame: &mut Frame, app: &App) {
-    let layout = Layout::default()
+    let layout = screen_layout(frame.area());
+
+    render_header(frame, layout[0], app);
+    render_body(frame, layout[1], app);
+    render_footer(frame, layout[2], app);
+    render_help_overlay(frame, app);
+}
+
+fn screen_layout(area: Rect) -> std::rc::Rc<[Rect]> {
+    Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),
             Constraint::Min(8),
             Constraint::Length(4),
         ])
-        .split(frame.area());
-
-    render_header(frame, layout[0], app);
-    render_body(frame, layout[1], app);
-    render_footer(frame, layout[2], app);
-    render_help_overlay(frame, app);
+        .split(area)
 }
 
 fn render_header(frame: &mut Frame, area: Rect, app: &App) {
@@ -42,13 +47,43 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 fn render_body(frame: &mut Frame, area: Rect, app: &App) {
-    let columns = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
-        .split(area);
+    let columns = body_layout(area);
 
     render_list_pane(frame, columns[0], app);
     render_preview_pane(frame, columns[1], app);
+}
+
+fn body_layout(area: Rect) -> std::rc::Rc<[Rect]> {
+    let (direction, constraints) = if area.width < 72 {
+        (
+            Direction::Vertical,
+            [Constraint::Percentage(40), Constraint::Percentage(60)],
+        )
+    } else {
+        (
+            Direction::Horizontal,
+            [Constraint::Percentage(35), Constraint::Percentage(65)],
+        )
+    };
+
+    Layout::default()
+        .direction(direction)
+        .constraints(constraints)
+        .split(area)
+}
+
+pub fn preview_metrics(app: &App, area: Rect) -> (u16, u16) {
+    let screen = screen_layout(area);
+    let body = body_layout(screen[1]);
+    let inner = body[1].inner(Margin::new(1, 1));
+    let page_size = inner.height.max(1);
+    if inner.width == 0 || inner.height == 0 {
+        return (0, page_size);
+    }
+
+    let line_count = wrapped_line_count(&preview_content(app), inner.width);
+    let max_scroll = line_count.saturating_sub(inner.height as usize);
+    (u16::try_from(max_scroll).unwrap_or(u16::MAX), page_size)
 }
 
 fn render_list_pane(frame: &mut Frame, area: Rect, app: &App) {
@@ -103,7 +138,29 @@ fn render_list_pane(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 fn render_preview_pane(frame: &mut Frame, area: Rect, app: &App) {
-    let preview = if let Some(note) = app.selected_note() {
+    frame.render_widget(preview_paragraph(app), area);
+}
+
+fn preview_paragraph(app: &App) -> Paragraph<'_> {
+    let preview = preview_content(app);
+    let title = format!(
+        " Preview [{}/{}] ",
+        app.preview_scroll(),
+        app.preview_max_scroll()
+    );
+    Paragraph::new(preview)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(Line::from(title).style(theme::PANE_TITLE_STYLE))
+                .style(theme::PANE_BLOCK_STYLE),
+        )
+        .wrap(Wrap { trim: false })
+        .scroll((app.preview_scroll(), 0))
+}
+
+fn preview_content(app: &App) -> String {
+    if let Some(note) = app.selected_note() {
         format!(
             "Title: {}\nSlug: {}\nDate: {}\nUpdated: {}\nTags: {}\n\n{}\n",
             note.title,
@@ -119,19 +176,44 @@ fn render_preview_pane(frame: &mut Frame, area: Rect, app: &App) {
         )
     } else {
         "Select a note to preview details here.".to_string()
-    };
+    }
+}
 
-    frame.render_widget(
-        Paragraph::new(preview)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(Line::from(" Preview ").style(theme::PANE_TITLE_STYLE))
-                    .style(theme::PANE_BLOCK_STYLE),
-            )
-            .wrap(Wrap { trim: false }),
-        area,
-    );
+fn wrapped_line_count(content: &str, width: u16) -> usize {
+    let width = usize::from(width.max(1));
+    content
+        .lines()
+        .map(|line| wrapped_line_height(line, width))
+        .sum::<usize>()
+        .max(1)
+}
+
+fn wrapped_line_height(line: &str, width: usize) -> usize {
+    if line.is_empty() {
+        return 1;
+    }
+
+    let mut lines = 1;
+    let mut used = 0;
+    for word in line.split_whitespace() {
+        let word_width = UnicodeWidthStr::width(word);
+        let separator = usize::from(used > 0);
+        if used + separator + word_width <= width {
+            used += separator + word_width;
+            continue;
+        }
+
+        if used > 0 {
+            lines += 1;
+        }
+        lines += word_width.saturating_sub(1) / width;
+        used = word_width % width;
+        if used == 0 && word_width > 0 {
+            used = width;
+        }
+    }
+    let display_width = UnicodeWidthStr::width(line);
+    lines.max(display_width.saturating_sub(1) / width + 1)
 }
 
 fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
@@ -142,7 +224,7 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
     };
     let text = Text::from(vec![
         Line::from(format!(" {status}")).style(theme::STATUS_TEXT_STYLE),
-        Line::from(" q quit | h/? help | j/k move | g/G jump | r refresh ")
+        Line::from(" q quit | h/? help | j/k move | [/] scroll | PgUp/PgDn page ")
             .style(theme::FOOTER_TEXT_STYLE),
     ]);
 
@@ -173,6 +255,8 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
         Line::from("  k / Up        Move selection up").style(theme::HELP_TEXT_STYLE),
         Line::from("  g / Home      Jump to first note").style(theme::HELP_TEXT_STYLE),
         Line::from("  G / End       Jump to last note").style(theme::HELP_TEXT_STYLE),
+        Line::from("  [ / ]         Scroll preview one line").style(theme::HELP_TEXT_STYLE),
+        Line::from("  PgUp / PgDn   Scroll preview one page").style(theme::HELP_TEXT_STYLE),
         Line::from(""),
         Line::from("Data").style(theme::HELP_SECTION_STYLE),
         Line::from("  r             Refresh notes from storage").style(theme::HELP_TEXT_STYLE),
@@ -256,9 +340,10 @@ mod theme {
 
 #[cfg(test)]
 mod tests {
-    use ratatui::{Terminal, backend::TestBackend};
+    use ratatui::{Terminal, backend::TestBackend, layout::Rect};
+    use zet::core::note::Note;
 
-    use super::render;
+    use super::{preview_metrics, render};
     use crate::tui::app::App;
 
     fn rendered_text(app: &App, width: u16, height: u16) -> String {
@@ -277,6 +362,17 @@ mod tests {
             .map(|cell| cell.symbol())
             .collect::<Vec<_>>()
             .join("")
+    }
+
+    fn note_with_body(body: &str) -> Note {
+        Note {
+            slug: "scroll-test".to_string(),
+            title: "Scroll Test".to_string(),
+            date: "2026-07-27".to_string(),
+            tags: vec!["unicode".to_string()],
+            updated_at: "2026-07-27".to_string(),
+            body: body.to_string(),
+        }
     }
 
     #[test]
@@ -302,10 +398,44 @@ mod tests {
     #[test]
     fn narrow_terminal_render_does_not_panic() {
         let mut app = App::default();
+        app.set_notes(vec![note_with_body("Preview body")]);
         app.set_status_message("a status message longer than the available terminal width");
 
-        let output = rendered_text(&app, 24, 12);
+        let output = rendered_text(&app, 40, 18);
 
         assert!(output.contains("Status"));
+        assert!(output.contains("Notes"));
+        assert!(output.contains("Preview"));
+    }
+
+    #[test]
+    fn wrapped_unicode_preview_is_scrollable_to_the_end() {
+        let mut app = App::default();
+        let body = (0..20)
+            .map(|index| format!("行 {index}: café 🚀 with wrapped words"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        app.set_notes(vec![note_with_body(&body)]);
+        let area = Rect::new(0, 0, 48, 20);
+        let (max_scroll, page_size) = preview_metrics(&app, area);
+        app.update_preview_metrics(max_scroll, page_size);
+
+        assert!(max_scroll > 0);
+        app.scroll_preview_down(u16::MAX);
+        let output = rendered_text(&app, area.width, area.height);
+
+        assert!(output.contains("19: café"));
+    }
+
+    #[test]
+    fn empty_and_short_previews_have_no_scroll_range() {
+        for body in ["", "short"] {
+            let mut app = App::default();
+            app.set_notes(vec![note_with_body(body)]);
+
+            let (max_scroll, _) = preview_metrics(&app, Rect::new(0, 0, 100, 30));
+
+            assert_eq!(max_scroll, 0, "body: {body:?}");
+        }
     }
 }

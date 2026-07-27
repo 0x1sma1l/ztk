@@ -18,8 +18,13 @@ pub fn handle_crossterm_events(app: &mut App) -> Result<()> {
 
 /// Handles the key events and updates the state of [`App`].
 fn on_key_event(app: &mut App, key: KeyEvent) {
-    if key.code == KeyCode::Esc && app.show_help() {
-        app.toggle_help();
+    if app.show_help() {
+        match (key.modifiers, key.code) {
+            (_, KeyCode::Esc | KeyCode::Char('h' | '?')) => app.toggle_help(),
+            (_, KeyCode::Char('q'))
+            | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => app.quit(),
+            _ => {}
+        }
         return;
     }
 
@@ -31,6 +36,10 @@ fn on_key_event(app: &mut App, key: KeyEvent) {
         (_, KeyCode::Up | KeyCode::Char('k')) => app.select_previous(),
         (_, KeyCode::Home | KeyCode::Char('g')) => app.select_first(),
         (_, KeyCode::End | KeyCode::Char('G')) => app.select_last(),
+        (_, KeyCode::Char(']')) => app.scroll_preview_down(1),
+        (_, KeyCode::Char('[')) => app.scroll_preview_up(1),
+        (_, KeyCode::PageDown) => app.scroll_preview_page_down(),
+        (_, KeyCode::PageUp) => app.scroll_preview_page_up(),
         (_, KeyCode::Char('r')) => app.refresh_notes(),
         _ => {}
     }
@@ -92,5 +101,37 @@ mod tests {
 
         on_key_event(&mut app, key(KeyCode::Char('h')));
         assert!(app.show_help());
+    }
+
+    #[test]
+    fn help_mode_blocks_navigation_and_scrolling() {
+        let mut app = App::default();
+        app.set_notes(vec![note("First"), note("Second")]);
+        app.update_preview_metrics(10, 4);
+        on_key_event(&mut app, key(KeyCode::Char('?')));
+
+        on_key_event(&mut app, key(KeyCode::Char('j')));
+        on_key_event(&mut app, key(KeyCode::PageDown));
+
+        assert_eq!(app.selected_index(), Some(0));
+        assert_eq!(app.preview_scroll(), 0);
+    }
+
+    #[test]
+    fn preview_scroll_keys_respect_bounds() {
+        let mut app = App::default();
+        app.update_preview_metrics(10, 4);
+
+        on_key_event(&mut app, key(KeyCode::Char(']')));
+        assert_eq!(app.preview_scroll(), 1);
+        on_key_event(&mut app, key(KeyCode::PageDown));
+        assert_eq!(app.preview_scroll(), 5);
+        on_key_event(&mut app, key(KeyCode::PageDown));
+        on_key_event(&mut app, key(KeyCode::PageDown));
+        assert_eq!(app.preview_scroll(), 10);
+        on_key_event(&mut app, key(KeyCode::PageUp));
+        assert_eq!(app.preview_scroll(), 6);
+        on_key_event(&mut app, key(KeyCode::Char('[')));
+        assert_eq!(app.preview_scroll(), 5);
     }
 }
