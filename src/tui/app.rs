@@ -3,9 +3,8 @@ use ratatui::DefaultTerminal;
 use std::path::PathBuf;
 
 use ztk::core::note::Note;
-use ztk::core::repository::NoteRepository;
 use ztk::core::usecases::list as list_usecase;
-use ztk::core::usecases::{create, delete, edit, search};
+use ztk::core::usecases::{create, delete, edit};
 use ztk::storage::local_repo::LocalMarkdownRepo;
 
 use super::events;
@@ -16,7 +15,6 @@ pub enum UiMode {
     #[default]
     Normal,
     Help,
-    Search,
     CreateTitle,
     EditTitle,
     EditTags,
@@ -39,6 +37,7 @@ pub struct App {
     preview_page_size: u16,
     input: String,
     notes_dir: PathBuf,
+    search_requested: bool,
 }
 
 impl App {
@@ -78,6 +77,12 @@ impl App {
             self.update_preview_metrics(max_scroll, page_size);
             terminal.draw(|frame| ui::render(frame, &self))?;
             events::handle_crossterm_events(&mut self)?;
+            if self.take_search_request() {
+                ratatui::restore();
+                let selection = crate::fuzzy::select_note(&self.notes_dir, None);
+                terminal = ratatui::init();
+                self.apply_search_selection(selection);
+            }
         }
         Ok(())
     }
@@ -237,6 +242,45 @@ impl App {
         }
     }
 
+    pub fn request_search(&mut self) {
+        self.search_requested = true;
+    }
+
+    #[cfg(test)]
+    pub fn search_requested(&self) -> bool {
+        self.search_requested
+    }
+
+    fn take_search_request(&mut self) -> bool {
+        std::mem::take(&mut self.search_requested)
+    }
+
+    fn apply_search_selection(
+        &mut self,
+        result: Result<crate::fuzzy::FuzzySelection, crate::errors::AppError>,
+    ) {
+        match result {
+            Ok(selection) if selection.candidate_count == 0 => {
+                self.set_status_message("no readable notes available to search")
+            }
+            Ok(selection) => match selection.slug {
+                Some(slug) => {
+                    self.refresh_notes_selecting(Some(&slug));
+                    self.set_status_message(if selection.issues.is_empty() {
+                        format!("selected {slug}")
+                    } else {
+                        format!(
+                            "selected {slug}, skipped {} invalid file(s)",
+                            selection.issues.len()
+                        )
+                    });
+                }
+                None => self.set_status_message("search cancelled"),
+            },
+            Err(error) => self.set_status_message(format!("search failed: {error}")),
+        }
+    }
+
     pub fn push_input(&mut self, character: char) {
         self.input.push(character);
     }
@@ -256,7 +300,6 @@ impl App {
 
     pub fn submit_input(&mut self) {
         let result = match self.mode {
-            UiMode::Search => self.submit_search(),
             UiMode::CreateTitle => self.submit_create(),
             UiMode::EditTitle => self.submit_update(edit::UpdateNoteRequest {
                 title: Some(self.input.clone()),
@@ -322,22 +365,6 @@ impl App {
         } else {
             format!("unchanged {slug}")
         });
-        Ok(())
-    }
-
-    fn submit_search(&mut self) -> Result<(), ztk::core::errors::CoreError> {
-        let repo = self.repository();
-        let results = search::search_notes(&repo, &self.input)?;
-        let notes = results
-            .matches
-            .iter()
-            .map(|result| repo.read_note(&result.slug))
-            .collect::<Result<Vec<_>, _>>()?;
-        let count = notes.len();
-        let skipped = results.issues.len();
-        self.set_notes(notes);
-        self.cancel_mode();
-        self.set_status_message(format!("{count} search result(s), {skipped} skipped"));
         Ok(())
     }
 
@@ -556,12 +583,6 @@ mod tests {
             app.selected_note().unwrap().body.trim_start_matches('\n'),
             "Updated from the TUI"
         );
-
-        app.begin_input(UiMode::Search);
-        app.input = "learning".to_string();
-        app.submit_input();
-        assert_eq!(app.notes().len(), 1);
-        assert!(app.status_message().contains("1 search result"));
 
         app.begin_delete();
         app.confirm_delete();

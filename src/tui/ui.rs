@@ -34,7 +34,6 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     let mode = match app.mode() {
         super::app::UiMode::Normal => "NORMAL",
         super::app::UiMode::Help => "HELP",
-        super::app::UiMode::Search => "SEARCH",
         super::app::UiMode::CreateTitle => "CREATE",
         super::app::UiMode::EditTitle => "EDIT TITLE",
         super::app::UiMode::EditTags => "EDIT TAGS",
@@ -304,7 +303,6 @@ fn render_action_overlay(frame: &mut Frame, app: &App) {
     use super::app::UiMode;
 
     let (title, prompt) = match app.mode() {
-        UiMode::Search => (" Search ", "Query"),
         UiMode::CreateTitle => (" Create note ", "Title"),
         UiMode::EditTitle => (" Edit title ", "Title"),
         UiMode::EditTags => (" Edit tags ", "Comma-separated tags"),
@@ -505,13 +503,6 @@ mod tests {
     fn action_modes_render_prompts_and_confirmation() {
         let mut app = App::default();
         app.set_notes(vec![note_with_body("body")]);
-        app.begin_input(crate::tui::app::UiMode::Search);
-        app.push_input('r');
-        let search = rendered_text(&app, 80, 24);
-        assert!(search.contains("Query:"));
-        assert!(search.contains("Enter submit"));
-
-        app.cancel_mode();
         app.begin_delete();
         let delete = rendered_text(&app, 80, 24);
         assert!(delete.contains("Move scroll-test to recoverable trash?"));

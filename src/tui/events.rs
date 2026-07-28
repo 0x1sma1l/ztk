@@ -42,11 +42,7 @@ fn on_key_event(app: &mut App, key: KeyEvent) {
 
     if matches!(
         app.mode(),
-        UiMode::Search
-            | UiMode::CreateTitle
-            | UiMode::EditTitle
-            | UiMode::EditTags
-            | UiMode::EditBody
+        UiMode::CreateTitle | UiMode::EditTitle | UiMode::EditTags | UiMode::EditBody
     ) {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc) => app.cancel_mode(),
@@ -74,7 +70,7 @@ fn on_key_event(app: &mut App, key: KeyEvent) {
         (_, KeyCode::PageDown) => app.scroll_preview_page_down(),
         (_, KeyCode::PageUp) => app.scroll_preview_page_up(),
         (_, KeyCode::Char('r')) => app.refresh_notes(),
-        (_, KeyCode::Char('/')) => app.begin_input(UiMode::Search),
+        (_, KeyCode::Char('/')) => app.request_search(),
         (_, KeyCode::Char('n')) => app.begin_input(UiMode::CreateTitle),
         (_, KeyCode::Char('e')) => app.begin_input(UiMode::EditTitle),
         (_, KeyCode::Char('t')) => app.begin_input(UiMode::EditTags),
@@ -178,8 +174,8 @@ mod tests {
     fn input_modes_capture_text_and_escape_cancels() {
         let mut app = App::default();
 
-        on_key_event(&mut app, key(KeyCode::Char('/')));
-        assert_eq!(app.mode(), crate::tui::app::UiMode::Search);
+        on_key_event(&mut app, key(KeyCode::Char('n')));
+        assert_eq!(app.mode(), crate::tui::app::UiMode::CreateTitle);
         on_key_event(&mut app, key(KeyCode::Char('r')));
         on_key_event(&mut app, key(KeyCode::Char('u')));
         on_key_event(&mut app, key(KeyCode::Char('s')));
@@ -190,6 +186,16 @@ mod tests {
         on_key_event(&mut app, key(KeyCode::Esc));
         assert_eq!(app.mode(), crate::tui::app::UiMode::Normal);
         assert!(app.input().is_empty());
+    }
+
+    #[test]
+    fn slash_requests_external_fuzzy_search() {
+        let mut app = App::default();
+
+        on_key_event(&mut app, key(KeyCode::Char('/')));
+
+        assert!(app.search_requested());
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Normal);
     }
 
     #[test]

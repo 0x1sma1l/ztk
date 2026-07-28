@@ -22,7 +22,7 @@ The project is currently under active development. Its note storage, shared core
 - Render a note's Markdown in the terminal.
 - Edit notes safely using `$VISUAL`/`$EDITOR`, including quoted commands and editor flags.
 - Update titles, tags, or bodies directly without opening an editor.
-- Fuzzy-search note slugs, titles, and tags with deterministic ranking.
+- Interactively fuzzy-find notes with `fzf`, then open the selection in your editor.
 - Move notes to recoverable repository-local trash and restore or purge them explicitly.
 - Lint note metadata and automatically remove duplicate tags.
 - Show the current note count.
@@ -35,7 +35,7 @@ The project is currently under active development. Its note storage, shared core
 - Jump to the first or last note.
 - Scroll long previews by line or page, including wrapped Unicode content.
 - Switch to a stacked list/preview layout on narrow terminals.
-- Create and fuzzy-search notes without leaving the TUI.
+- Create notes and launch `fzf` search without leaving the TUI workflow.
 - Edit the selected note's title, tags, or body through validated core operations.
 - Delete the selected note through an explicit confirmation mode.
 - Refresh notes from disk.
@@ -46,7 +46,17 @@ The project is currently under active development. Its note storage, shared core
 
 ## Installation
 
-Ztk currently builds from source and requires Rust 1.85 or newer.
+Ztk currently builds from source and requires Rust 1.85 or newer. Interactive search also requires [`fzf`](https://github.com/junegunn/fzf).
+
+Install `fzf` with your platform package manager:
+
+```bash
+brew install fzf                    # macOS
+sudo apt install fzf                # Ubuntu/Debian
+winget install junegunn.fzf         # Windows
+```
+
+Package-manager distributions of Ztk should declare `fzf` as a runtime dependency. Cargo cannot install external system executables, so users installing with `cargo install` must install `fzf` separately.
 
 ```bash
 git clone https://github.com/0x1sma1l/ztk.git
@@ -103,7 +113,7 @@ View or edit a note:
 ztk view rust-ownership
 ztk edit rust-ownership
 ztk update rust-ownership --title "Ownership in Rust" --tags rust,learning
-ztk search ownership
+ztk search
 ```
 
 Check the note collection:
@@ -146,7 +156,7 @@ ztk purge --all
 | `ztk view <slug>` | Render a note's Markdown body. |
 | `ztk edit <slug>` | Open a note in `$VISUAL`/`$EDITOR` and update its modification date. |
 | `ztk update <slug> [--title ...] [--tags ...] [--body ...]` | Update selected note fields without opening an editor. |
-| `ztk search <query>` | Fuzzy-search note slugs, titles, and tags. |
+| `ztk search [query]` | Launch `fzf` over the configured notes repository, optionally seeded with a query, then edit the selected note. |
 | `ztk lint [--fix]` | Validate notes and optionally apply supported repairs. |
 | `ztk stats` | Display the total number of readable notes. |
 | `ztk delete <slug> [--force]` | Move one note to recoverable trash, with confirmation by default. |
@@ -301,6 +311,7 @@ Ztk is available under the [MIT License](LICENSE).
 ## Known limitations
 
 - TUI body input is currently a single-line prompt; use `ztk edit <slug>` for comfortable multiline authoring.
+- Interactive search depends on the external `fzf` executable when Ztk is installed through Cargo or a standalone binary.
 
 ## Roadmap
 
@@ -309,7 +320,7 @@ Near-term work is focused on:
 1. Consistent partial-failure handling for malformed notes.
 2. Strict and compatible frontmatter parsing.
 3. Bulk trash management after single-entry workflows stabilize.
-4. Live TUI search backed by the shared core search use case.
+4. Package-manager releases that install the `fzf` runtime dependency automatically.
 5. Explicit note renaming and full TUI feature parity.
 6. Broader CLI/TUI integration coverage, CI, and packaging.
 
