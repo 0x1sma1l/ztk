@@ -85,7 +85,7 @@ cargo run -- tui
 
 Use `cargo run --quiet -- <command>` when you do not want Cargo's build output. Do not repeat the binary name after `--`.
 
-Create a note:
+Create a note and open it immediately in `$VISUAL`, `$EDITOR`, or `vi`:
 
 ```bash
 ztk new "Rust Ownership" --tags rust,learning
@@ -140,7 +140,7 @@ ztk trash purge <trash-id> --force
 
 | Command | Description |
 | --- | --- |
-| `ztk new <title> [--tags <tags>]` | Create a note. Tags are comma separated. |
+| `ztk new <title> [--tags <tags>]` | Create a note, then open it in the configured editor. Tags are comma separated. |
 | `ztk list` | List note slugs, dates, and tags. |
 | `ztk view <slug>` | Render a note's Markdown body. |
 | `ztk edit <slug>` | Open a note in `$VISUAL`/`$EDITOR` and update its modification date. |

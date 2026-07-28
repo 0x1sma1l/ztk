@@ -38,6 +38,7 @@ fn main() {
         Command::New { title, tags } => {
             let transformed_title = title.trim_matches(|c| c == '"' || c == '\'');
             create_note(&notes_dir, transformed_title, tags.as_deref())
+                .and_then(|slug| edit_note(&notes_dir, &slug))
         }
         Command::List => list_notes(&notes_dir),
         Command::Edit { slug } => edit_note(&notes_dir, slug),

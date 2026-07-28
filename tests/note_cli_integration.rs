@@ -8,6 +8,8 @@ fn ztk(root: &TempDir, args: &[&str]) -> Output {
         .args(args)
         .env("ZTK_NOTES_DIR", root.path().join("notes"))
         .env_remove("ZTK_CONFIG")
+        .env_remove("VISUAL")
+        .env("EDITOR", "true")
         .current_dir(root.path())
         .output()
         .expect("failed to execute ztk command")
@@ -86,6 +88,24 @@ fn new_rejects_invalid_tags_without_creating_a_note() {
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Invalid tags"));
     assert!(!root.path().join("notes/invalid-tags.md").exists());
+}
+
+#[test]
+fn new_keeps_the_created_note_when_the_editor_fails() {
+    let root = TempDir::new().expect("failed to create temp dir");
+    let output = Command::new(env!("CARGO_BIN_EXE_ztk"))
+        .args(["new", "Editor Failure"])
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
+        .env_remove("VISUAL")
+        .env("EDITOR", "false")
+        .current_dir(root.path())
+        .output()
+        .expect("failed to execute ztk new");
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(stderr(&output).contains("Editor exited with a non-zero status"));
+    assert!(root.path().join("notes/editor-failure.md").is_file());
 }
 
 #[test]

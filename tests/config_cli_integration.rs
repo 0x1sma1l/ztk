@@ -11,6 +11,8 @@ fn run(root: &TempDir, args: &[&str], environment: &[(&str, &Path)]) -> Output {
         .current_dir(root.path())
         .env_remove("ZTK_NOTES_DIR")
         .env_remove("ZTK_CONFIG")
+        .env_remove("VISUAL")
+        .env("EDITOR", "true")
         .env("XDG_DATA_HOME", root.path().join("data"));
     for (name, value) in environment {
         command.env(name, value);
