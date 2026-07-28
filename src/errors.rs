@@ -28,6 +28,14 @@ pub enum AppError {
         source: std::io::Error,
     },
 
+    #[error(
+        "Interactive search requires `fzf`. Install it with `brew install fzf`, `sudo apt install fzf`, or `winget install junegunn.fzf`."
+    )]
+    FzfNotInstalled,
+
+    #[error("fzf exited unsuccessfully (status: {0:?})")]
+    FzfFailed(Option<i32>),
+
     #[error("Lint failed: {0} file(s) contain issues")]
     LintFailed(usize),
 

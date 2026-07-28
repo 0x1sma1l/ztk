@@ -4,12 +4,11 @@ use std::io;
 
 use crate::core::errors::CoreError;
 use crate::core::note::Note;
-use crate::core::repository::{NoteCollection, NoteLoadIssue, NoteRepository};
+use crate::core::repository::{NoteCollection, NoteRepository};
 
 #[derive(Debug, Default)]
 pub struct InMemoryNoteRepository {
     notes: RefCell<BTreeMap<String, Note>>,
-    list_issues: RefCell<Vec<NoteLoadIssue>>,
     read_calls: Cell<usize>,
     save_calls: Cell<usize>,
     fail_exists: Cell<bool>,
@@ -48,10 +47,6 @@ impl InMemoryNoteRepository {
 
     pub fn fail_saves(&self) {
         self.fail_saves.set(true);
-    }
-
-    pub fn add_list_issue(&self, issue: NoteLoadIssue) {
-        self.list_issues.borrow_mut().push(issue);
     }
 
     fn injected_io_error(operation: &str) -> CoreError {
@@ -104,7 +99,7 @@ impl NoteRepository for InMemoryNoteRepository {
     fn list_notes(&self) -> Result<NoteCollection, CoreError> {
         Ok(NoteCollection {
             notes: self.notes.borrow().values().cloned().collect(),
-            issues: self.list_issues.borrow().clone(),
+            issues: Vec::new(),
         })
     }
 

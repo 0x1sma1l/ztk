@@ -1,38 +1,26 @@
 use crate::errors::AppError;
+use crate::fuzzy;
 use std::path::Path;
-use ztk::core::usecases::search as search_usecase;
-use ztk::storage::local_repo::LocalMarkdownRepo;
 
-pub fn search_notes(notes_dir: &Path, query: &str) -> Result<(), AppError> {
-    let repo = LocalMarkdownRepo::new(notes_dir);
-    let results = search_usecase::search_notes(&repo, query)?;
-
-    if results.matches.is_empty() {
-        println!("No notes matched `{}`.", query.trim());
-    } else {
-        println!("Search results (score | slug | title | tags):\n");
-        for result in results.matches {
-            let tags = if result.tags.is_empty() {
-                "-".to_string()
-            } else {
-                result.tags.join(", ")
-            };
-            println!(
-                "{} | {} | {} | {}",
-                result.score, result.slug, result.title, tags
-            );
-        }
-    }
-
-    for issue in &results.issues {
+pub fn search_notes(notes_dir: &Path, query: Option<&str>) -> Result<(), AppError> {
+    let selection = fuzzy::select_note(notes_dir, query)?;
+    for issue in &selection.issues {
         eprintln!("warning: skipped {}.md: {}", issue.slug, issue.message);
     }
-    if !results.issues.is_empty() {
+    if !selection.issues.is_empty() {
         eprintln!(
             "warning: skipped {} unreadable note(s); run `ztk lint` for a complete integrity check",
-            results.issues.len()
+            selection.issues.len()
         );
     }
 
-    Ok(())
+    if selection.candidate_count == 0 {
+        println!("No readable notes available to search.");
+        return Ok(());
+    }
+
+    match selection.slug {
+        Some(slug) => crate::cli::edit::edit_note(notes_dir, &slug),
+        None => Ok(()),
+    }
 }

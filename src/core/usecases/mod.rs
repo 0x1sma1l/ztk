@@ -4,7 +4,6 @@ pub mod edit;
 pub mod lint;
 pub mod list;
 pub mod read;
-pub mod search;
 pub mod trash;
 
 #[cfg(test)]

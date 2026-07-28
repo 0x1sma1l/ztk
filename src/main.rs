@@ -2,6 +2,7 @@ mod args;
 mod cli;
 mod config;
 mod errors;
+mod fuzzy;
 mod tui;
 
 use clap::Parser;
@@ -55,7 +56,7 @@ fn main() {
             body.as_deref(),
         ),
         Command::View { slug } => view_note(&notes_dir, slug),
-        Command::Search { query } => search_notes(&notes_dir, query),
+        Command::Search { query } => search_notes(&notes_dir, query.as_deref()),
         Command::Lint { fix } => lint_notes(&notes_dir, *fix),
         Command::Stats => get_stats(&notes_dir),
         Command::Delete { slug, force } => delete_note(&notes_dir, slug, *force),

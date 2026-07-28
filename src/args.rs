@@ -57,10 +57,10 @@ pub enum Command {
         /// Note slug (without .md).
         slug: String,
     },
-    /// Search note slugs, titles, and tags using fuzzy matching.
+    /// Interactively find a note with fzf and open it in your editor.
     Search {
-        /// Search query.
-        query: String,
+        /// Optional initial fzf query.
+        query: Option<String>,
     },
     /// Lint notes for data and formatting issues.
     Lint {
