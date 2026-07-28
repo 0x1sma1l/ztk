@@ -6,6 +6,20 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-28
+
+### Added
+
+- Added an embedded, centered fuzzy-search modal to the TUI with live `fzf`-ranked results and a side-by-side note preview.
+- Added keyboard-driven search navigation, selection, cancellation, and query clearing without leaving the TUI.
+
+### Changed
+
+- Kept the underlying notes interface visible around the search modal instead of allowing `fzf` to take over full terminal rows.
+- Reduced the search modal footprint and made its results and preview stack vertically on narrow terminals.
+- Simplified the TUI chrome by removing excess borders, adopting the terminal background, and using a consistent neutral text palette.
+- Simplified the main preview heading by removing its scroll-position counter.
+
 ## [0.2.0] - 2026-07-28
 
 ### Breaking changes
@@ -35,6 +49,7 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 - Added strict slug and storage-boundary validation, compatible frontmatter parsing, typed calendar dates, and recoverable handling of malformed notes.
 - Added cross-platform CI, release packaging, CLI integration tests, TUI tests, and Rust 1.85 compatibility.
 
-[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/0x1sma1l/ztk/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/0x1sma1l/ztk/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/0x1sma1l/ztk/releases/tag/v0.1.0

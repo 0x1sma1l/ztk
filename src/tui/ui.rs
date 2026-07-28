@@ -2,7 +2,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Margin, Rect},
     prelude::{Color, Modifier, Style},
-    text::{Line, Text},
+    text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap},
 };
 use unicode_width::UnicodeWidthStr;
@@ -17,15 +17,16 @@ pub fn render(frame: &mut Frame, app: &App) {
     render_footer(frame, layout[2], app);
     render_help_overlay(frame, app);
     render_action_overlay(frame, app);
+    render_search_overlay(frame, app);
 }
 
 fn screen_layout(area: Rect) -> std::rc::Rc<[Rect]> {
     Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(1),
             Constraint::Min(8),
-            Constraint::Length(4),
+            Constraint::Length(2),
         ])
         .split(area)
 }
@@ -38,21 +39,23 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         super::app::UiMode::EditTitle => "EDIT TITLE",
         super::app::UiMode::EditTags => "EDIT TAGS",
         super::app::UiMode::EditBody => "EDIT BODY",
+        super::app::UiMode::Search => "SEARCH",
         super::app::UiMode::ConfirmDelete => "CONFIRM DELETE",
     };
-    let title = Line::from(" Ztk ").centered().style(theme::TITLE_STYLE);
-    let right = format!(
-        "Repo: {} | Mode: {mode} | Notes: {}",
-        app.notes_dir().display(),
-        app.notes().len()
+    let columns = Layout::horizontal([Constraint::Length(8), Constraint::Min(0)]).split(area);
+    frame.render_widget(
+        Paragraph::new(Line::from(" Ztk ").style(theme::TITLE_STYLE)),
+        columns[0],
     );
     frame.render_widget(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(title)
-            .title_bottom(Line::from(right).right_aligned().style(theme::MUTED_STYLE))
-            .style(theme::HEADER_BLOCK_STYLE),
-        area,
+        Paragraph::new(Line::from(format!(
+            "{}  ·  {mode}  ·  {} notes ",
+            app.notes_dir().display(),
+            app.notes().len()
+        )))
+        .style(theme::MUTED_STYLE)
+        .right_aligned(),
+        columns[1],
     );
 }
 
@@ -107,7 +110,7 @@ fn render_list_pane(frame: &mut Frame, area: Rect, app: &App) {
             ]))
             .block(
                 Block::default()
-                    .borders(Borders::ALL)
+                    .borders(Borders::TOP | Borders::RIGHT)
                     .title(Line::from(" Notes ").style(theme::PANE_TITLE_STYLE))
                     .style(theme::PANE_BLOCK_STYLE),
             )
@@ -136,7 +139,7 @@ fn render_list_pane(frame: &mut Frame, area: Rect, app: &App) {
     let list = List::new(items)
         .block(
             Block::default()
-                .borders(Borders::ALL)
+                .borders(Borders::TOP | Borders::RIGHT)
                 .title(Line::from(" Notes ").style(theme::PANE_TITLE_STYLE))
                 .style(theme::PANE_BLOCK_STYLE),
         )
@@ -153,16 +156,11 @@ fn render_preview_pane(frame: &mut Frame, area: Rect, app: &App) {
 
 fn preview_paragraph(app: &App) -> Paragraph<'_> {
     let preview = preview_content(app);
-    let title = format!(
-        " Preview [{}/{}] ",
-        app.preview_scroll(),
-        app.preview_max_scroll()
-    );
     Paragraph::new(preview)
         .block(
             Block::default()
-                .borders(Borders::ALL)
-                .title(Line::from(title).style(theme::PANE_TITLE_STYLE))
+                .borders(Borders::TOP)
+                .title(Line::from(" Preview ").style(theme::PANE_TITLE_STYLE))
                 .style(theme::PANE_BLOCK_STYLE),
         )
         .wrap(Wrap { trim: false })
@@ -233,20 +231,15 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
         app.status_message()
     };
     let text = Text::from(vec![
-        Line::from(format!(" {status}")).style(theme::STATUS_TEXT_STYLE),
-        Line::from(" n new | e/t/b edit | / search | d delete | h/? help ")
+        Line::from(vec![
+            Span::styled(" ● ", theme::STATUS_DOT_STYLE),
+            Span::styled(status, theme::STATUS_TEXT_STYLE),
+        ]),
+        Line::from(" n new  e/t/b edit  / search  d delete  h/? help ")
             .style(theme::FOOTER_TEXT_STYLE),
     ]);
 
-    frame.render_widget(
-        Paragraph::new(text).block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(Line::from(" Status ").style(theme::PANE_TITLE_STYLE))
-                .style(theme::FOOTER_BLOCK_STYLE),
-        ),
-        area,
-    );
+    frame.render_widget(Paragraph::new(text).style(theme::FOOTER_BLOCK_STYLE), area);
 }
 
 fn render_help_overlay(frame: &mut Frame, app: &App) {
@@ -328,7 +321,7 @@ fn render_action_overlay(frame: &mut Frame, app: &App) {
             );
             return;
         }
-        UiMode::Normal | UiMode::Help => return,
+        UiMode::Normal | UiMode::Help | UiMode::Search => return,
     };
 
     let area = centered_rect(80, 30, frame.area());
@@ -342,6 +335,116 @@ fn render_action_overlay(frame: &mut Frame, app: &App) {
         .wrap(Wrap { trim: false }),
         area,
     );
+}
+
+fn render_search_overlay(frame: &mut Frame, app: &App) {
+    if app.mode() != super::app::UiMode::Search {
+        return;
+    }
+
+    let area = centered_rect(80, 70, frame.area());
+    frame.render_widget(Clear, area);
+    frame.render_widget(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(Line::from(" Search notes ").style(theme::PANE_TITLE_STYLE))
+            .style(theme::SEARCH_BLOCK_STYLE),
+        area,
+    );
+
+    let inner = area.inner(Margin::new(1, 1));
+    let rows = Layout::vertical([
+        Constraint::Length(2),
+        Constraint::Min(3),
+        Constraint::Length(1),
+    ])
+    .split(inner);
+    frame.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled(" ❯ ", theme::SEARCH_POINTER_STYLE),
+            Span::raw(app.input()),
+        ]))
+        .block(Block::default().borders(Borders::BOTTOM)),
+        rows[0],
+    );
+
+    let panes = if rows[1].width < 70 {
+        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).split(rows[1])
+    } else {
+        Layout::horizontal([Constraint::Percentage(45), Constraint::Percentage(55)]).split(rows[1])
+    };
+
+    let items = app
+        .search_matches()
+        .iter()
+        .filter_map(|slug| app.notes().iter().find(|note| note.slug == *slug))
+        .map(|note| {
+            ListItem::new(Line::from(format!(
+                "{}  {}",
+                note.title,
+                if note.tags.is_empty() {
+                    String::new()
+                } else {
+                    format!("[{}]", note.tags.join(", "))
+                }
+            )))
+        })
+        .collect::<Vec<_>>();
+    let results_border = if rows[1].width < 70 {
+        Borders::BOTTOM
+    } else {
+        Borders::RIGHT
+    };
+    let results = List::new(items)
+        .block(
+            Block::default()
+                .borders(results_border)
+                .title(Line::from(format!(
+                    " Results ({}) ",
+                    app.search_matches().len()
+                )))
+                .style(theme::SEARCH_BLOCK_STYLE),
+        )
+        .highlight_style(theme::SELECTED_ROW_STYLE)
+        .highlight_symbol("› ");
+    let mut state = ListState::default().with_selected(app.search_selected_index());
+    frame.render_stateful_widget(results, panes[0], &mut state);
+
+    let preview = app
+        .search_selected_note()
+        .map(note_preview_content)
+        .unwrap_or_else(|| "No matching notes".to_string());
+    frame.render_widget(
+        Paragraph::new(preview)
+            .block(
+                Block::default()
+                    .title(" Preview ")
+                    .style(theme::SEARCH_BLOCK_STYLE),
+            )
+            .wrap(Wrap { trim: false }),
+        panes[1],
+    );
+    frame.render_widget(
+        Paragraph::new(" ↑/↓ navigate  Enter select  Esc close  Ctrl-U clear ")
+            .style(theme::MUTED_STYLE),
+        rows[2],
+    );
+}
+
+fn note_preview_content(note: &ztk::core::note::Note) -> String {
+    format!(
+        "Title: {}\nSlug: {}\nDate: {}\nUpdated: {}\nTags: {}\n\n{}\n",
+        note.title,
+        note.slug,
+        note.date,
+        note.updated_at,
+        if note.tags.is_empty() {
+            "-".to_string()
+        } else {
+            note.tags.join(", ")
+        },
+        note.body
+    )
 }
 
 fn centered_rect(width_percent: u16, height_percent: u16, area: Rect) -> Rect {
@@ -367,35 +470,37 @@ fn centered_rect(width_percent: u16, height_percent: u16, area: Rect) -> Rect {
 mod theme {
     use super::*;
 
+    // Keep the terminal's native foreground/background and use neutral gray only
+    // for secondary information.
     pub const TITLE_STYLE: Style = Style::new()
-        .fg(Color::Rgb(246, 248, 255))
-        .bg(Color::Rgb(25, 35, 60))
+        .fg(Color::Reset)
+        .bg(Color::Reset)
         .add_modifier(Modifier::BOLD);
 
-    pub const MUTED_STYLE: Style = Style::new().fg(Color::Rgb(150, 162, 184));
-    pub const HEADER_BLOCK_STYLE: Style = Style::new().bg(Color::Rgb(16, 20, 35));
-    pub const PANE_BLOCK_STYLE: Style = Style::new().bg(Color::Rgb(10, 14, 24));
-    pub const PANE_TITLE_STYLE: Style = Style::new()
-        .fg(Color::Rgb(130, 185, 255))
-        .add_modifier(Modifier::BOLD);
-    pub const ROW_TITLE_STYLE: Style = Style::new().fg(Color::Rgb(208, 222, 248));
-    pub const ROW_META_STYLE: Style = Style::new().fg(Color::Rgb(138, 154, 179));
+    pub const MUTED_STYLE: Style = Style::new().fg(Color::Indexed(245)).bg(Color::Reset);
+    pub const PANE_BLOCK_STYLE: Style = Style::new().bg(Color::Reset);
+    pub const PANE_TITLE_STYLE: Style = Style::new().fg(Color::Reset).add_modifier(Modifier::BOLD);
+    pub const ROW_TITLE_STYLE: Style = Style::new().fg(Color::Reset);
+    pub const ROW_META_STYLE: Style = Style::new().fg(Color::Indexed(245));
     pub const SELECTED_ROW_STYLE: Style = Style::new()
-        .fg(Color::Rgb(255, 244, 214))
-        .bg(Color::Rgb(80, 52, 24))
+        .fg(Color::Indexed(254))
+        .bg(Color::Indexed(237))
         .add_modifier(Modifier::BOLD);
-    pub const FOOTER_BLOCK_STYLE: Style = Style::new().bg(Color::Rgb(20, 25, 38));
-    pub const STATUS_TEXT_STYLE: Style = Style::new().fg(Color::Rgb(255, 204, 128));
-    pub const FOOTER_TEXT_STYLE: Style = Style::new().fg(Color::Rgb(200, 210, 230));
-    pub const OVERLAY_BACKDROP_STYLE: Style = Style::new().bg(Color::Rgb(12, 16, 26));
-    pub const HELP_BLOCK_STYLE: Style = Style::new().bg(Color::Rgb(18, 24, 40));
+    pub const FOOTER_BLOCK_STYLE: Style = Style::new().bg(Color::Reset);
+    pub const STATUS_DOT_STYLE: Style = Style::new().fg(Color::Indexed(245));
+    pub const STATUS_TEXT_STYLE: Style = Style::new().fg(Color::Indexed(245));
+    pub const FOOTER_TEXT_STYLE: Style = Style::new().fg(Color::Indexed(245));
+    pub const OVERLAY_BACKDROP_STYLE: Style = Style::new().bg(Color::Reset);
+    pub const HELP_BLOCK_STYLE: Style = Style::new().bg(Color::Reset);
+    pub const SEARCH_BLOCK_STYLE: Style = Style::new().fg(Color::Reset).bg(Color::Reset);
+    pub const SEARCH_POINTER_STYLE: Style =
+        Style::new().fg(Color::Reset).add_modifier(Modifier::BOLD);
     pub const HELP_TITLE_STYLE: Style = Style::new()
-        .fg(Color::Rgb(237, 243, 255))
+        .fg(Color::Indexed(254))
         .add_modifier(Modifier::BOLD);
-    pub const HELP_SECTION_STYLE: Style = Style::new()
-        .fg(Color::Rgb(130, 185, 255))
-        .add_modifier(Modifier::BOLD);
-    pub const HELP_TEXT_STYLE: Style = Style::new().fg(Color::Rgb(210, 220, 240));
+    pub const HELP_SECTION_STYLE: Style =
+        Style::new().fg(Color::Reset).add_modifier(Modifier::BOLD);
+    pub const HELP_TEXT_STYLE: Style = Style::new().fg(Color::Reset);
 }
 
 #[cfg(test)]
@@ -443,7 +548,7 @@ mod tests {
         let output = rendered_text(&app, 80, 20);
 
         assert!(output.contains("loaded 3 note(s), skipped 1 invalid file(s)"));
-        assert!(output.contains("n new | e/t/b edit"));
+        assert!(output.contains("n new  e/t/b edit"));
     }
 
     #[test]
@@ -463,7 +568,7 @@ mod tests {
 
         let output = rendered_text(&app, 40, 18);
 
-        assert!(output.contains("Status"));
+        assert!(output.contains("n new"));
         assert!(output.contains("Notes"));
         assert!(output.contains("Preview"));
     }

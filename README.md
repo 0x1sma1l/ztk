@@ -35,7 +35,7 @@ The project is currently under active development. Its note storage, shared core
 - Jump to the first or last note.
 - Scroll long previews by line or page, including wrapped Unicode content.
 - Switch to a stacked list/preview layout on narrow terminals.
-- Create notes and launch `fzf` search without leaving the TUI workflow.
+- Create notes and launch a centered, two-pane `fzf` search without leaving the TUI workflow.
 - Edit the selected note's title, tags, or body through validated core operations.
 - Delete the selected note through an explicit confirmation mode.
 - Refresh notes from disk.
@@ -204,7 +204,7 @@ Bulk deletion is not part of v1; single-entry trash operations keep collision an
 | `[` / `]` | Scroll the preview one visual line. |
 | `Page Up` / `Page Down` | Scroll the preview one viewport. |
 | `n` | Create a note by title. |
-| `/` | Search note slugs, titles, and tags. |
+| `/` | Open the centered fuzzy-search panel for slugs, titles, and tags, with live note preview. |
 | `e` / `t` / `b` | Edit the selected note's title, tags, or body. |
 | `d` | Request deletion of the selected note; `y` confirms and `n`/`Esc` cancels. |
 | `r` | Reload notes from disk. |

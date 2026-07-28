@@ -3,6 +3,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 use crate::errors::AppError;
+use ztk::core::note::Note;
 use ztk::core::repository::{NoteLoadIssue, NoteRepository};
 use ztk::storage::local_repo::LocalMarkdownRepo;
 
@@ -30,7 +31,8 @@ pub fn select_note(
         "--delimiter=\t",
         "--with-nth=2..",
         "--no-multi",
-        "--prompt=Notes> ",
+        "--layout=reverse",
+        "--prompt=Search> ",
     ]);
     if let Some(query) = initial_query.filter(|query| !query.is_empty()) {
         command.arg("--query").arg(query);
@@ -74,6 +76,55 @@ pub fn select_note(
         issues: collection.issues,
         candidate_count,
     })
+}
+
+/// Return note slugs ranked by fzf without allowing fzf to take over the terminal.
+pub fn filter_notes(notes: &[Note], query: &str) -> Result<Vec<String>, AppError> {
+    if notes.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut command = Command::new("fzf");
+    command.args([
+        "--filter",
+        query,
+        "--delimiter=\t",
+        "--with-nth=2..",
+        "--no-multi",
+    ]);
+    command.stdin(Stdio::piped()).stdout(Stdio::piped());
+
+    let mut child = command.spawn().map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            AppError::FzfNotInstalled
+        } else {
+            AppError::Io(error)
+        }
+    })?;
+
+    {
+        let mut input = child.stdin.take().expect("fzf stdin is piped");
+        for note in notes {
+            writeln!(
+                input,
+                "{}\t{}\t{}",
+                note.slug,
+                sanitize(&note.title),
+                sanitize(&note.tags.join(", "))
+            )?;
+        }
+    }
+
+    let output = child.wait_with_output()?;
+    if !output.status.success() && output.status.code() != Some(1) {
+        return Err(AppError::FzfFailed(output.status.code()));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| line.split('\t').next())
+        .map(ToOwned::to_owned)
+        .collect())
 }
 
 fn sanitize(value: &str) -> String {

@@ -19,6 +19,7 @@ pub enum UiMode {
     EditTitle,
     EditTags,
     EditBody,
+    Search,
     ConfirmDelete,
 }
 
@@ -37,7 +38,8 @@ pub struct App {
     preview_page_size: u16,
     input: String,
     notes_dir: PathBuf,
-    search_requested: bool,
+    search_matches: Vec<String>,
+    search_selected_index: Option<usize>,
 }
 
 impl App {
@@ -77,12 +79,6 @@ impl App {
             self.update_preview_metrics(max_scroll, page_size);
             terminal.draw(|frame| ui::render(frame, &self))?;
             events::handle_crossterm_events(&mut self)?;
-            if self.take_search_request() {
-                ratatui::restore();
-                let selection = crate::fuzzy::select_note(&self.notes_dir, None);
-                terminal = ratatui::init();
-                self.apply_search_selection(selection);
-            }
         }
         Ok(())
     }
@@ -160,6 +156,7 @@ impl App {
         self.preview_scroll
     }
 
+    #[cfg(test)]
     pub fn preview_max_scroll(&self) -> u16 {
         self.preview_max_scroll
     }
@@ -242,59 +239,103 @@ impl App {
         }
     }
 
-    pub fn request_search(&mut self) {
-        self.search_requested = true;
+    pub fn begin_search(&mut self) {
+        self.input.clear();
+        self.mode = UiMode::Search;
+        self.update_search_matches();
     }
 
-    #[cfg(test)]
-    pub fn search_requested(&self) -> bool {
-        self.search_requested
+    pub fn search_matches(&self) -> &[String] {
+        &self.search_matches
     }
 
-    fn take_search_request(&mut self) -> bool {
-        std::mem::take(&mut self.search_requested)
+    pub fn search_selected_index(&self) -> Option<usize> {
+        self.search_selected_index
     }
 
-    fn apply_search_selection(
-        &mut self,
-        result: Result<crate::fuzzy::FuzzySelection, crate::errors::AppError>,
-    ) {
-        match result {
-            Ok(selection) if selection.candidate_count == 0 => {
-                self.set_status_message("no readable notes available to search")
+    pub fn search_selected_note(&self) -> Option<&Note> {
+        let slug = self
+            .search_selected_index
+            .and_then(|index| self.search_matches.get(index))?;
+        self.notes.iter().find(|note| note.slug == *slug)
+    }
+
+    pub fn select_next_search_match(&mut self) {
+        if self.search_matches.is_empty() {
+            self.search_selected_index = None;
+        } else {
+            self.search_selected_index = Some(match self.search_selected_index {
+                Some(index) if index + 1 < self.search_matches.len() => index + 1,
+                _ => 0,
+            });
+        }
+    }
+
+    pub fn select_previous_search_match(&mut self) {
+        if self.search_matches.is_empty() {
+            self.search_selected_index = None;
+        } else {
+            self.search_selected_index = Some(match self.search_selected_index {
+                Some(index) if index > 0 => index - 1,
+                _ => self.search_matches.len() - 1,
+            });
+        }
+    }
+
+    pub fn submit_search(&mut self) {
+        let Some(slug) = self.search_selected_note().map(|note| note.slug.clone()) else {
+            return;
+        };
+        self.selected_index = self.notes.iter().position(|note| note.slug == slug);
+        self.cancel_mode();
+        self.set_status_message(format!("selected {slug}"));
+        self.reset_preview_scroll();
+    }
+
+    fn update_search_matches(&mut self) {
+        match crate::fuzzy::filter_notes(&self.notes, &self.input) {
+            Ok(matches) => {
+                self.search_matches = matches;
+                self.search_selected_index = if self.search_matches.is_empty() {
+                    None
+                } else {
+                    Some(0)
+                };
             }
-            Ok(selection) => match selection.slug {
-                Some(slug) => {
-                    self.refresh_notes_selecting(Some(&slug));
-                    self.set_status_message(if selection.issues.is_empty() {
-                        format!("selected {slug}")
-                    } else {
-                        format!(
-                            "selected {slug}, skipped {} invalid file(s)",
-                            selection.issues.len()
-                        )
-                    });
-                }
-                None => self.set_status_message("search cancelled"),
-            },
-            Err(error) => self.set_status_message(format!("search failed: {error}")),
+            Err(error) => {
+                self.mode = UiMode::Normal;
+                self.search_matches.clear();
+                self.search_selected_index = None;
+                self.set_status_message(format!("search failed: {error}"));
+            }
         }
     }
 
     pub fn push_input(&mut self, character: char) {
         self.input.push(character);
+        if self.mode == UiMode::Search {
+            self.update_search_matches();
+        }
     }
 
     pub fn pop_input(&mut self) {
         self.input.pop();
+        if self.mode == UiMode::Search {
+            self.update_search_matches();
+        }
     }
 
     pub fn clear_input(&mut self) {
         self.input.clear();
+        if self.mode == UiMode::Search {
+            self.update_search_matches();
+        }
     }
 
     pub fn cancel_mode(&mut self) {
         self.input.clear();
+        self.search_matches.clear();
+        self.search_selected_index = None;
         self.mode = UiMode::Normal;
     }
 

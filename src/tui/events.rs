@@ -40,6 +40,26 @@ fn on_key_event(app: &mut App, key: KeyEvent) {
         return;
     }
 
+    if app.mode() == UiMode::Search {
+        match (key.modifiers, key.code) {
+            (_, KeyCode::Esc) => app.cancel_mode(),
+            (_, KeyCode::Enter) => app.submit_search(),
+            (_, KeyCode::Up) | (KeyModifiers::CONTROL, KeyCode::Char('k' | 'K')) => {
+                app.select_previous_search_match()
+            }
+            (_, KeyCode::Down) | (KeyModifiers::CONTROL, KeyCode::Char('j' | 'J')) => {
+                app.select_next_search_match()
+            }
+            (_, KeyCode::Backspace) => app.pop_input(),
+            (KeyModifiers::CONTROL, KeyCode::Char('u' | 'U')) => app.clear_input(),
+            (KeyModifiers::NONE | KeyModifiers::SHIFT, KeyCode::Char(character)) => {
+                app.push_input(character)
+            }
+            _ => {}
+        }
+        return;
+    }
+
     if matches!(
         app.mode(),
         UiMode::CreateTitle | UiMode::EditTitle | UiMode::EditTags | UiMode::EditBody
@@ -70,7 +90,7 @@ fn on_key_event(app: &mut App, key: KeyEvent) {
         (_, KeyCode::PageDown) => app.scroll_preview_page_down(),
         (_, KeyCode::PageUp) => app.scroll_preview_page_up(),
         (_, KeyCode::Char('r')) => app.refresh_notes(),
-        (_, KeyCode::Char('/')) => app.request_search(),
+        (_, KeyCode::Char('/')) => app.begin_search(),
         (_, KeyCode::Char('n')) => app.begin_input(UiMode::CreateTitle),
         (_, KeyCode::Char('e')) => app.begin_input(UiMode::EditTitle),
         (_, KeyCode::Char('t')) => app.begin_input(UiMode::EditTags),
@@ -189,13 +209,12 @@ mod tests {
     }
 
     #[test]
-    fn slash_requests_external_fuzzy_search() {
+    fn slash_opens_embedded_fuzzy_search() {
         let mut app = App::default();
 
         on_key_event(&mut app, key(KeyCode::Char('/')));
 
-        assert!(app.search_requested());
-        assert_eq!(app.mode(), crate::tui::app::UiMode::Normal);
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Search);
     }
 
     #[test]
