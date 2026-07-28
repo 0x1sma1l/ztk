@@ -23,7 +23,7 @@ fn help_lists_the_complete_cli_v1_command_set() {
     let output = stdout(&output);
     for command in [
         "new", "list", "edit", "update", "view", "search", "lint", "stats", "delete", "trash",
-        "tui",
+        "purge", "tui",
     ] {
         assert!(output.contains(command), "missing command: {command}");
     }

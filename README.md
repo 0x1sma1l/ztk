@@ -133,7 +133,8 @@ List and restore deleted notes, or explicitly purge one forever:
 ```bash
 ztk trash list
 ztk trash restore <trash-id>
-ztk trash purge <trash-id> --force
+ztk purge <trash-id>
+ztk purge --all
 ```
 
 ## Commands
@@ -151,7 +152,8 @@ ztk trash purge <trash-id> --force
 | `ztk delete <slug> [--force]` | Move one note to recoverable trash, with confirmation by default. |
 | `ztk trash list` | List recoverable trash entries and their deletion times. |
 | `ztk trash restore <id>` | Restore an entry if its original slug is free. |
-| `ztk trash purge <id> --force` | Permanently remove one trash entry. |
+| `ztk purge <id>` | Permanently remove one trash entry after interactive confirmation. |
+| `ztk purge --all` | Permanently remove all trash after interactive confirmation. |
 | `ztk tui` | Launch the full-screen terminal interface. |
 
 Run `ztk --help` or `ztk <command> --help` for command-line help.

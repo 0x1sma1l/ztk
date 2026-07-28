@@ -272,6 +272,30 @@ impl NoteRepository for LocalMarkdownRepo {
         }
     }
 
+    fn purge_all_trash(&self) -> Result<usize, CoreError> {
+        let trash_dir = self.trash_dir();
+        if !trash_dir.exists() {
+            return Ok(0);
+        }
+
+        let mut purged_notes = 0;
+        for entry in fs::read_dir(&trash_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            let file_type = entry.file_type()?;
+            if file_type.is_file() || file_type.is_symlink() {
+                if path.extension().and_then(|value| value.to_str()) == Some("md") {
+                    purged_notes += 1;
+                }
+                fs::remove_file(path)?;
+            } else if file_type.is_dir() {
+                fs::remove_dir_all(path)?;
+            }
+        }
+
+        Ok(purged_notes)
+    }
+
     fn read_raw_note(&self, slug: &str) -> Result<String, CoreError> {
         self.ensure_note_exists(slug)?;
 

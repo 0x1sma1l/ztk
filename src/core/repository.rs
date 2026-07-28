@@ -48,5 +48,8 @@ pub trait NoteRepository {
         let _ = id;
         Err(CoreError::UnsupportedRepositoryOperation("purge trash"))
     }
+    fn purge_all_trash(&self) -> Result<usize, CoreError> {
+        Err(CoreError::UnsupportedRepositoryOperation("purge all trash"))
+    }
     fn read_raw_note(&self, slug: &str) -> Result<String, CoreError>;
 }

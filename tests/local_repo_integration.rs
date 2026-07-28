@@ -212,3 +212,48 @@ fn list_notes_returns_readable_notes_and_malformed_file_issues() {
     assert_eq!(collection.issues[0].slug, "broken-note");
     assert!(collection.issues[0].message.contains("No frontmatter"));
 }
+
+#[test]
+fn purge_all_trash_removes_valid_and_malformed_entries() {
+    let notes_dir = TempDir::new().expect("failed to create temp dir");
+    let repo = LocalMarkdownRepo::new(&notes_dir);
+    let note = Note {
+        slug: "purge-all".to_string(),
+        title: "Purge All".to_string(),
+        date: "2026-07-28".parse().unwrap(),
+        tags: vec![],
+        updated_at: "2026-07-28".parse().unwrap(),
+        body: "body".to_string(),
+    };
+    repo.save_note(&note).unwrap();
+    repo.trash_note(&note.slug).unwrap();
+    fs::write(notes_dir.path().join(".trash/broken.toml"), "invalid").unwrap();
+
+    assert_eq!(repo.purge_all_trash().unwrap(), 1);
+    assert_eq!(
+        fs::read_dir(notes_dir.path().join(".trash"))
+            .unwrap()
+            .count(),
+        0
+    );
+}
+
+#[test]
+fn purge_trash_permanently_removes_one_entry() {
+    let notes_dir = TempDir::new().expect("failed to create temp dir");
+    let repo = LocalMarkdownRepo::new(&notes_dir);
+    let note = Note {
+        slug: "purge-one".to_string(),
+        title: "Purge One".to_string(),
+        date: "2026-07-28".parse().unwrap(),
+        tags: vec![],
+        updated_at: "2026-07-28".parse().unwrap(),
+        body: "body".to_string(),
+    };
+    repo.save_note(&note).unwrap();
+    let entry = repo.trash_note(&note.slug).unwrap();
+
+    repo.purge_trash(&entry.id).unwrap();
+
+    assert!(repo.list_trash().unwrap().entries.is_empty());
+}

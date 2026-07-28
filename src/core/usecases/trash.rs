@@ -13,3 +13,7 @@ pub fn restore_trash<R: NoteRepository>(repo: &R, id: &str) -> Result<Note, Core
 pub fn purge_trash<R: NoteRepository>(repo: &R, id: &str) -> Result<(), CoreError> {
     repo.purge_trash(id)
 }
+
+pub fn purge_all_trash<R: NoteRepository>(repo: &R) -> Result<usize, CoreError> {
+    repo.purge_all_trash()
+}

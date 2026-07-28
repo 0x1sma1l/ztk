@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{ArgGroup, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -6,7 +6,7 @@ use std::path::PathBuf;
 #[command(
     about = "Local-first, terminal-first Markdown note manager",
     long_about = "Ztk is a local-first, keyboard-driven note tool for creating, viewing, editing, linting, and managing Markdown notes from the terminal.",
-    after_help = "Examples:\n  ztk new \"Rust Ownership\" --tags rust,learning\n  ztk list\n  ztk view rust-ownership\n  ztk edit rust-ownership\n  ztk update rust-ownership --tags rust,learning\n  ztk search ownership\n  ztk lint\n  ztk lint --fix\n  ztk delete rust-ownership\n  ztk stats\n  ztk tui"
+    after_help = "Examples:\n  ztk new \"Rust Ownership\" --tags rust,learning\n  ztk list\n  ztk view rust-ownership\n  ztk edit rust-ownership\n  ztk update rust-ownership --tags rust,learning\n  ztk search ownership\n  ztk lint\n  ztk lint --fix\n  ztk delete rust-ownership\n  ztk purge <trash-id>\n  ztk stats\n  ztk tui"
 )]
 pub struct Cli {
     /// Notes directory. Overrides ZTK_NOTES_DIR and the config file.
@@ -79,7 +79,21 @@ pub enum Command {
         #[arg(short, long)]
         force: bool,
     },
-    /// List, restore, or permanently purge recoverable deletions.
+    /// Permanently purge one trash entry or all trash after confirmation.
+    #[command(group(
+        ArgGroup::new("purge_target")
+            .required(true)
+            .args(["id", "all"])
+    ))]
+    Purge {
+        /// Trash entry ID to purge.
+        id: Option<String>,
+
+        /// Purge every entry after interactive confirmation.
+        #[arg(long)]
+        all: bool,
+    },
+    /// List or restore recoverable deletions.
     Trash {
         #[command(subcommand)]
         action: TrashAction,
@@ -95,13 +109,6 @@ pub enum TrashAction {
     List,
     /// Restore a deleted note by trash ID.
     Restore { id: String },
-    /// Permanently purge one trash entry.
-    Purge {
-        id: String,
-        /// Confirm permanent deletion.
-        #[arg(long)]
-        force: bool,
-    },
 }
 
 #[cfg(test)]
@@ -135,7 +142,7 @@ mod tests {
             names,
             [
                 "new", "list", "edit", "update", "view", "search", "lint", "stats", "delete",
-                "trash", "tui"
+                "purge", "trash", "tui"
             ]
         );
     }

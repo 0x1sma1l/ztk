@@ -112,7 +112,7 @@ fn repeated_deletions_get_unique_entries() {
 }
 
 #[test]
-fn purge_is_explicit_and_permanent() {
+fn purge_one_refuses_without_an_interactive_confirmation() {
     let root = TempDir::new().unwrap();
     write_note(&root, "purge-me", "body");
     assert!(
@@ -122,13 +122,28 @@ fn purge_is_explicit_and_permanent() {
     );
     let id = trash_ids(&root).pop().unwrap();
 
-    let refused = ztk(&root, &["trash", "purge", &id]);
-    assert_eq!(refused.status.code(), Some(1));
-    assert!(!trash_ids(&root).is_empty());
+    let refused = ztk(&root, &["purge", &id]);
 
-    let purged = ztk(&root, &["trash", "purge", &id, "--force"]);
-    assert!(purged.status.success());
-    assert!(trash_ids(&root).is_empty());
+    assert_eq!(refused.status.code(), Some(1));
+    assert!(text(&refused.stderr).contains("interactive terminal"));
+    assert_eq!(trash_ids(&root), [id]);
+}
+
+#[test]
+fn purge_all_refuses_without_an_interactive_confirmation() {
+    let root = TempDir::new().unwrap();
+    write_note(&root, "keep-me", "body");
+    assert!(
+        ztk(&root, &["delete", "keep-me", "--force"])
+            .status
+            .success()
+    );
+
+    let refused = ztk(&root, &["purge", "--all"]);
+
+    assert_eq!(refused.status.code(), Some(1));
+    assert!(text(&refused.stderr).contains("interactive terminal"));
+    assert_eq!(trash_ids(&root).len(), 1);
 }
 
 #[test]
