@@ -167,11 +167,11 @@ fn render_preview_pane(frame: &mut Frame, area: Rect, app: &App) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    if app.mode() == super::app::UiMode::Editor
-        && let Some(editor) = app.editor()
-    {
-        editor.render(frame, inner);
-        return;
+    if app.mode() == super::app::UiMode::Editor {
+        if let Some(editor) = app.editor() {
+            editor.render(frame, inner);
+            return;
+        }
     }
 
     frame.render_widget(preview_paragraph(app), inner);

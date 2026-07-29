@@ -299,17 +299,21 @@ impl App {
     }
 
     pub fn send_editor_key(&mut self, key: crossterm::event::KeyEvent) {
-        if let Some(editor) = self.editor.as_mut()
-            && let Err(error) = editor.send_key(key)
-        {
+        let error = self
+            .editor
+            .as_mut()
+            .and_then(|editor| editor.send_key(key).err());
+        if let Some(error) = error {
             self.set_status_message(format!("editor input failed: {error}"));
         }
     }
 
     pub fn send_editor_paste(&mut self, text: &str) {
-        if let Some(editor) = self.editor.as_mut()
-            && let Err(error) = editor.send_paste(text)
-        {
+        let error = self
+            .editor
+            .as_mut()
+            .and_then(|editor| editor.send_paste(text).err());
+        if let Some(error) = error {
             self.set_status_message(format!("editor paste failed: {error}"));
         }
     }
@@ -317,9 +321,11 @@ impl App {
     fn update_editor_size(&mut self, cols: u16, rows: u16) {
         self.editor_cols = cols;
         self.editor_rows = rows;
-        if let Some(editor) = self.editor.as_mut()
-            && let Err(error) = editor.resize(cols, rows)
-        {
+        let error = self
+            .editor
+            .as_mut()
+            .and_then(|editor| editor.resize(cols, rows).err());
+        if let Some(error) = error {
             self.set_status_message(format!("editor resize failed: {error}"));
         }
     }
