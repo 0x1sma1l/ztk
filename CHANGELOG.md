@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-29
+
 ### Added
 
 - Added focused browse and read modes to the TUI note surface.
@@ -15,7 +17,7 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 
 - Renamed the TUI's default `NORMAL` mode to `BROWSE` to distinguish application navigation from Vim's normal mode.
 - Removed the TUI's separate title, tag, and body controls; note metadata remains editable through the embedded editor and CLI.
-- Made `Enter` the sole shortcut for read mode and narrowed the notes list to leave more room for the note surface.
+- Made `Enter` the sole shortcut for read mode, narrowed the notes list to leave more room for the note surface, and added a visible `q`/`Esc` exit hint.
 
 ## [0.3.0] - 2026-07-28
 
@@ -60,7 +62,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 - Added strict slug and storage-boundary validation, compatible frontmatter parsing, typed calendar dates, and recoverable handling of malformed notes.
 - Added cross-platform CI, release packaging, CLI integration tests, TUI tests, and Rust 1.85 compatibility.
 
-[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/0x1sma1l/ztk/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/0x1sma1l/ztk/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/0x1sma1l/ztk/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/0x1sma1l/ztk/releases/tag/v0.1.0
