@@ -33,12 +33,11 @@ fn screen_layout(area: Rect) -> std::rc::Rc<[Rect]> {
 
 fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     let mode = match app.mode() {
-        super::app::UiMode::Normal => "NORMAL",
+        super::app::UiMode::Browse => "BROWSE",
+        super::app::UiMode::Read => "READ",
+        super::app::UiMode::Editor => "EDITOR",
         super::app::UiMode::Help => "HELP",
         super::app::UiMode::CreateTitle => "CREATE",
-        super::app::UiMode::EditTitle => "EDIT TITLE",
-        super::app::UiMode::EditTags => "EDIT TAGS",
-        super::app::UiMode::EditBody => "EDIT BODY",
         super::app::UiMode::Search => "SEARCH",
         super::app::UiMode::ConfirmDelete => "CONFIRM DELETE",
     };
@@ -75,7 +74,7 @@ fn body_layout(area: Rect) -> std::rc::Rc<[Rect]> {
     } else {
         (
             Direction::Horizontal,
-            [Constraint::Percentage(35), Constraint::Percentage(65)],
+            [Constraint::Percentage(28), Constraint::Percentage(72)],
         )
     };
 
@@ -86,17 +85,22 @@ fn body_layout(area: Rect) -> std::rc::Rc<[Rect]> {
 }
 
 pub fn preview_metrics(app: &App, area: Rect) -> (u16, u16) {
-    let screen = screen_layout(area);
-    let body = body_layout(screen[1]);
-    let inner = body[1].inner(Margin::new(1, 1));
-    let page_size = inner.height.max(1);
-    if inner.width == 0 || inner.height == 0 {
+    let (width, height) = note_surface_size(area);
+    let page_size = height.max(1);
+    if width == 0 || height == 0 {
         return (0, page_size);
     }
 
-    let line_count = wrapped_line_count(&preview_content(app), inner.width);
-    let max_scroll = line_count.saturating_sub(inner.height as usize);
+    let line_count = wrapped_line_count(&preview_content(app), width);
+    let max_scroll = line_count.saturating_sub(height as usize);
     (u16::try_from(max_scroll).unwrap_or(u16::MAX), page_size)
+}
+
+pub fn note_surface_size(area: Rect) -> (u16, u16) {
+    let screen = screen_layout(area);
+    let body = body_layout(screen[1]);
+    let inner = Block::default().borders(Borders::TOP).inner(body[1]);
+    (inner.width.max(1), inner.height.max(1))
 }
 
 fn render_list_pane(frame: &mut Frame, area: Rect, app: &App) {
@@ -151,18 +155,31 @@ fn render_list_pane(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 fn render_preview_pane(frame: &mut Frame, area: Rect, app: &App) {
-    frame.render_widget(preview_paragraph(app), area);
+    let title = match app.mode() {
+        super::app::UiMode::Read => " Note · read ",
+        super::app::UiMode::Editor => " Note · editor ",
+        _ => " Note ",
+    };
+    let block = Block::default()
+        .borders(Borders::TOP)
+        .title(Line::from(title).style(theme::PANE_TITLE_STYLE))
+        .style(theme::PANE_BLOCK_STYLE);
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    if app.mode() == super::app::UiMode::Editor
+        && let Some(editor) = app.editor()
+    {
+        editor.render(frame, inner);
+        return;
+    }
+
+    frame.render_widget(preview_paragraph(app), inner);
 }
 
 fn preview_paragraph(app: &App) -> Paragraph<'_> {
     let preview = preview_content(app);
     Paragraph::new(preview)
-        .block(
-            Block::default()
-                .borders(Borders::TOP)
-                .title(Line::from(" Preview ").style(theme::PANE_TITLE_STYLE))
-                .style(theme::PANE_BLOCK_STYLE),
-        )
         .wrap(Wrap { trim: false })
         .scroll((app.preview_scroll(), 0))
 }
@@ -230,13 +247,17 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
     } else {
         app.status_message()
     };
+    let keys = match app.mode() {
+        super::app::UiMode::Read => " j/k scroll  PgUp/PgDn page  e edit  Esc notes ",
+        super::app::UiMode::Editor => " editor owns keys  :wq save & close  :q close  F6 detach ",
+        _ => " n new  Enter read  e edit  / search  h/? help  q/Esc exit ",
+    };
     let text = Text::from(vec![
         Line::from(vec![
             Span::styled(" ● ", theme::STATUS_DOT_STYLE),
             Span::styled(status, theme::STATUS_TEXT_STYLE),
         ]),
-        Line::from(" n new  e/t/b edit  / search  d delete  h/? help ")
-            .style(theme::FOOTER_TEXT_STYLE),
+        Line::from(keys).style(theme::FOOTER_TEXT_STYLE),
     ]);
 
     frame.render_widget(Paragraph::new(text).style(theme::FOOTER_BLOCK_STYLE), area);
@@ -258,6 +279,7 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
         Line::from("  k / Up        Move selection up").style(theme::HELP_TEXT_STYLE),
         Line::from("  g / Home      Jump to first note").style(theme::HELP_TEXT_STYLE),
         Line::from("  G / End       Jump to last note").style(theme::HELP_TEXT_STYLE),
+        Line::from("  Enter         Focus the note for reading").style(theme::HELP_TEXT_STYLE),
         Line::from("  [ / ]         Scroll preview one line").style(theme::HELP_TEXT_STYLE),
         Line::from("  PgUp / PgDn   Scroll preview one page").style(theme::HELP_TEXT_STYLE),
         Line::from(""),
@@ -265,7 +287,8 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
         Line::from("  r             Refresh notes from storage").style(theme::HELP_TEXT_STYLE),
         Line::from("  /             Search notes").style(theme::HELP_TEXT_STYLE),
         Line::from("  n             Create a note").style(theme::HELP_TEXT_STYLE),
-        Line::from("  e / t / b     Edit title / tags / body").style(theme::HELP_TEXT_STYLE),
+        Line::from("  e             Edit the note in $VISUAL/$EDITOR")
+            .style(theme::HELP_TEXT_STYLE),
         Line::from("  d             Move selected note to trash with confirmation")
             .style(theme::HELP_TEXT_STYLE),
         Line::from(""),
@@ -297,9 +320,6 @@ fn render_action_overlay(frame: &mut Frame, app: &App) {
 
     let (title, prompt) = match app.mode() {
         UiMode::CreateTitle => (" Create note ", "Title"),
-        UiMode::EditTitle => (" Edit title ", "Title"),
-        UiMode::EditTags => (" Edit tags ", "Comma-separated tags"),
-        UiMode::EditBody => (" Edit body ", "Markdown body"),
         UiMode::ConfirmDelete => {
             let slug = app
                 .selected_note()
@@ -321,7 +341,7 @@ fn render_action_overlay(frame: &mut Frame, app: &App) {
             );
             return;
         }
-        UiMode::Normal | UiMode::Help | UiMode::Search => return,
+        UiMode::Browse | UiMode::Read | UiMode::Editor | UiMode::Help | UiMode::Search => return,
     };
 
     let area = centered_rect(80, 30, frame.area());
@@ -548,7 +568,7 @@ mod tests {
         let output = rendered_text(&app, 80, 20);
 
         assert!(output.contains("loaded 3 note(s), skipped 1 invalid file(s)"));
-        assert!(output.contains("n new  e/t/b edit"));
+        assert!(output.contains("n new  Enter read  e edit"));
     }
 
     #[test]
@@ -570,7 +590,7 @@ mod tests {
 
         assert!(output.contains("n new"));
         assert!(output.contains("Notes"));
-        assert!(output.contains("Preview"));
+        assert!(output.contains("Note"));
     }
 
     #[test]

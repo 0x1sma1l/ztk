@@ -1,23 +1,37 @@
 use super::app::{App, UiMode};
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use std::time::Duration;
 /// Reads the crossterm events and updates the state of [`App`].
 ///
 /// If your application needs to perform work in between handling events, you can use the
 /// [`event::poll`] function to check if there are any events available with a timeout.
-pub fn handle_crossterm_events(app: &mut App) -> Result<()> {
+pub fn handle_crossterm_events(app: &mut App, timeout: Duration) -> Result<bool> {
+    if !event::poll(timeout)? {
+        return Ok(false);
+    }
     match event::read()? {
         // it's important to check KeyEventKind::Press to avoid handling key release events
         Event::Key(key) if key.kind == KeyEventKind::Press => on_key_event(app, key),
         Event::Mouse(_) => {}
+        Event::Paste(text) if app.mode() == UiMode::Editor => app.send_editor_paste(&text),
         Event::Resize(cols, rows) => app.handle_resize(cols, rows),
         _ => {}
     }
-    Ok(())
+    Ok(true)
 }
 
 /// Handles the key events and updates the state of [`App`].
 fn on_key_event(app: &mut App, key: KeyEvent) {
+    if app.mode() == UiMode::Editor {
+        if key.code == KeyCode::F(6) {
+            app.detach_editor();
+        } else {
+            app.send_editor_key(key);
+        }
+        return;
+    }
+
     if app.show_help() {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('h' | '?')) => app.toggle_help(),
@@ -60,10 +74,22 @@ fn on_key_event(app: &mut App, key: KeyEvent) {
         return;
     }
 
-    if matches!(
-        app.mode(),
-        UiMode::CreateTitle | UiMode::EditTitle | UiMode::EditTags | UiMode::EditBody
-    ) {
+    if app.mode() == UiMode::Read {
+        match (key.modifiers, key.code) {
+            (_, KeyCode::Esc | KeyCode::Char('q' | 'h')) => app.return_to_browse(),
+            (_, KeyCode::Char('e')) => app.begin_editor(),
+            (_, KeyCode::Down | KeyCode::Char('j') | KeyCode::Char(']')) => {
+                app.scroll_preview_down(1)
+            }
+            (_, KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('[')) => app.scroll_preview_up(1),
+            (_, KeyCode::PageDown) => app.scroll_preview_page_down(),
+            (_, KeyCode::PageUp) => app.scroll_preview_page_up(),
+            _ => {}
+        }
+        return;
+    }
+
+    if app.mode() == UiMode::CreateTitle {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc) => app.cancel_mode(),
             (_, KeyCode::Enter) => app.submit_input(),
@@ -91,10 +117,9 @@ fn on_key_event(app: &mut App, key: KeyEvent) {
         (_, KeyCode::PageUp) => app.scroll_preview_page_up(),
         (_, KeyCode::Char('r')) => app.refresh_notes(),
         (_, KeyCode::Char('/')) => app.begin_search(),
-        (_, KeyCode::Char('n')) => app.begin_input(UiMode::CreateTitle),
-        (_, KeyCode::Char('e')) => app.begin_input(UiMode::EditTitle),
-        (_, KeyCode::Char('t')) => app.begin_input(UiMode::EditTags),
-        (_, KeyCode::Char('b')) => app.begin_input(UiMode::EditBody),
+        (_, KeyCode::Char('n')) => app.begin_create(),
+        (_, KeyCode::Enter) => app.begin_read(),
+        (_, KeyCode::Char('e')) => app.begin_editor(),
         (_, KeyCode::Char('d')) => app.begin_delete(),
         _ => {}
     }
@@ -191,6 +216,43 @@ mod tests {
     }
 
     #[test]
+    fn read_mode_keeps_navigation_inside_the_note_surface() {
+        let mut app = App::default();
+        app.set_notes(vec![note("First"), note("Second")]);
+        app.update_preview_metrics(10, 4);
+
+        on_key_event(&mut app, key(KeyCode::Enter));
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Read);
+        app.update_preview_metrics(10, 4);
+
+        on_key_event(&mut app, key(KeyCode::Char('j')));
+        assert_eq!(app.selected_index(), Some(0));
+        assert_eq!(app.preview_scroll(), 1);
+
+        on_key_event(&mut app, key(KeyCode::Esc));
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Browse);
+    }
+
+    #[test]
+    fn only_enter_opens_read_mode_and_metadata_shortcuts_are_unbound() {
+        let mut app = App::default();
+        app.set_notes(vec![note("First")]);
+
+        for code in [
+            KeyCode::Char('l'),
+            KeyCode::Char('E'),
+            KeyCode::Char('t'),
+            KeyCode::Char('b'),
+        ] {
+            on_key_event(&mut app, key(code));
+            assert_eq!(app.mode(), crate::tui::app::UiMode::Browse);
+        }
+
+        on_key_event(&mut app, key(KeyCode::Enter));
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Read);
+    }
+
+    #[test]
     fn input_modes_capture_text_and_escape_cancels() {
         let mut app = App::default();
 
@@ -204,7 +266,7 @@ mod tests {
         on_key_event(&mut app, key(KeyCode::Backspace));
         assert_eq!(app.input(), "rus");
         on_key_event(&mut app, key(KeyCode::Esc));
-        assert_eq!(app.mode(), crate::tui::app::UiMode::Normal);
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Browse);
         assert!(app.input().is_empty());
     }
 
@@ -226,7 +288,7 @@ mod tests {
         assert_eq!(app.mode(), crate::tui::app::UiMode::ConfirmDelete);
         on_key_event(&mut app, key(KeyCode::Char('n')));
 
-        assert_eq!(app.mode(), crate::tui::app::UiMode::Normal);
+        assert_eq!(app.mode(), crate::tui::app::UiMode::Browse);
         assert_eq!(app.notes().len(), 1);
         assert_eq!(app.status_message(), "delete cancelled");
     }

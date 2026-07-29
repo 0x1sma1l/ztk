@@ -6,6 +6,17 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 
 ## [Unreleased]
 
+### Added
+
+- Added focused browse and read modes to the TUI note surface.
+- Added an embedded PTY-backed `$VISUAL`/`$EDITOR` session inside the note pane, with ordinary editor key ownership, live resizing, safe temporary-file validation, and `F6` detach/reattach support.
+
+### Changed
+
+- Renamed the TUI's default `NORMAL` mode to `BROWSE` to distinguish application navigation from Vim's normal mode.
+- Removed the TUI's separate title, tag, and body controls; note metadata remains editable through the embedded editor and CLI.
+- Made `Enter` the sole shortcut for read mode and narrowed the notes list to leave more room for the note surface.
+
 ## [0.3.0] - 2026-07-28
 
 ### Added

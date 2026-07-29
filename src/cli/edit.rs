@@ -1,4 +1,10 @@
-use std::{env, ffi::OsString, fs, path::Path, process::Command};
+use std::{
+    env,
+    ffi::{OsStr, OsString},
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use crate::errors::AppError;
 use ztk::core::repository::NoteRepository;
@@ -8,24 +14,12 @@ use ztk::storage::frontmatter::parse_frontmatter_and_body;
 use ztk::storage::local_repo::LocalMarkdownRepo;
 
 pub fn edit_note(notes_dir: &Path, slug: &str) -> Result<(), AppError> {
-    let slug = validate_slug(slug)?;
-    let repo = LocalMarkdownRepo::new(notes_dir);
-    repo.ensure_note_exists(slug)?;
-    let original = repo.read_raw_note(slug)?;
-    let temporary = tempfile::Builder::new()
-        .prefix(&format!("ztk-{slug}-"))
-        .suffix(".md")
-        .tempfile()?;
-    fs::write(temporary.path(), original)?;
-
-    let visual = env::var_os("VISUAL");
-    let editor = env::var_os("EDITOR");
-    let (source, raw_command) = select_editor_command(visual.as_deref(), editor.as_deref())?;
-    let mut command_parts = parse_editor_command(source, &raw_command)?;
+    let edit = EditBuffer::prepare(notes_dir, slug)?;
+    let mut command_parts = configured_editor_command()?;
     let executable = command_parts.remove(0);
     let status = Command::new(&executable)
         .args(command_parts)
-        .arg(temporary.path())
+        .arg(edit.path())
         .status()
         .map_err(|source| AppError::EditorLaunch {
             editor: executable,
@@ -36,24 +30,69 @@ pub fn edit_note(notes_dir: &Path, slug: &str) -> Result<(), AppError> {
         return Err(AppError::EditorExitedWithError);
     }
 
-    let edited = fs::read_to_string(temporary.path())?;
-    let (frontmatter, body) = parse_frontmatter_and_body(&edited)?;
-    update_note(
-        &repo,
-        slug,
-        UpdateNoteRequest {
-            title: Some(frontmatter.title),
-            tags: Some(frontmatter.tags),
-            body: Some(body),
-        },
-    )?;
-
+    edit.commit()?;
     Ok(())
 }
 
+pub(crate) struct EditBuffer {
+    notes_dir: PathBuf,
+    slug: String,
+    temporary: tempfile::NamedTempFile,
+}
+
+impl EditBuffer {
+    pub(crate) fn prepare(notes_dir: &Path, slug: &str) -> Result<Self, AppError> {
+        let slug = validate_slug(slug)?;
+        let repo = LocalMarkdownRepo::new(notes_dir);
+        repo.ensure_note_exists(slug)?;
+        let original = repo.read_raw_note(slug)?;
+        let temporary = tempfile::Builder::new()
+            .prefix(&format!("ztk-{slug}-"))
+            .suffix(".md")
+            .tempfile()?;
+        fs::write(temporary.path(), original)?;
+
+        Ok(Self {
+            notes_dir: notes_dir.to_path_buf(),
+            slug: slug.to_string(),
+            temporary,
+        })
+    }
+
+    pub(crate) fn path(&self) -> &Path {
+        self.temporary.path()
+    }
+
+    pub(crate) fn slug(&self) -> &str {
+        &self.slug
+    }
+
+    pub(crate) fn commit(self) -> Result<(), AppError> {
+        let edited = fs::read_to_string(self.temporary.path())?;
+        let (frontmatter, body) = parse_frontmatter_and_body(&edited)?;
+        update_note(
+            &LocalMarkdownRepo::new(&self.notes_dir),
+            &self.slug,
+            UpdateNoteRequest {
+                title: Some(frontmatter.title),
+                tags: Some(frontmatter.tags),
+                body: Some(body),
+            },
+        )?;
+        Ok(())
+    }
+}
+
+pub(crate) fn configured_editor_command() -> Result<Vec<String>, AppError> {
+    let visual = env::var_os("VISUAL");
+    let editor = env::var_os("EDITOR");
+    let (source, raw_command) = select_editor_command(visual.as_deref(), editor.as_deref())?;
+    parse_editor_command(source, &raw_command)
+}
+
 fn select_editor_command(
-    visual: Option<&std::ffi::OsStr>,
-    editor: Option<&std::ffi::OsStr>,
+    visual: Option<&OsStr>,
+    editor: Option<&OsStr>,
 ) -> Result<(&'static str, OsString), AppError> {
     if let Some(command) = visual {
         if command.is_empty() {
@@ -72,10 +111,7 @@ fn select_editor_command(
     Ok(("default editor", OsString::from("vi")))
 }
 
-fn parse_editor_command(
-    source: &'static str,
-    command: &std::ffi::OsStr,
-) -> Result<Vec<String>, AppError> {
+fn parse_editor_command(source: &'static str, command: &OsStr) -> Result<Vec<String>, AppError> {
     let command = command
         .to_str()
         .ok_or(AppError::InvalidEditorCommand(source))?;

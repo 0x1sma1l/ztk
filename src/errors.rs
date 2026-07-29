@@ -28,6 +28,9 @@ pub enum AppError {
         source: std::io::Error,
     },
 
+    #[error("Embedded editor error: {0}")]
+    EmbeddedEditor(String),
+
     #[error(
         "Interactive search requires `fzf`. Install it with `brew install fzf`, `sudo apt install fzf`, or `winget install junegunn.fzf`."
     )]

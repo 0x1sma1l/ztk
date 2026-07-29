@@ -30,7 +30,7 @@ The project is currently under active development. Its note storage, shared core
 ### TUI
 
 - Browse real notes in a stateful list.
-- Preview the selected note and its metadata.
+- Read the selected note in a focused surface or edit it with `$VISUAL`/`$EDITOR` directly inside the TUI.
 - Navigate with Vim-style keys or arrow keys.
 - Jump to the first or last note.
 - Scroll long previews by line or page, including wrapped Unicode content.
@@ -201,11 +201,13 @@ Bulk deletion is not part of v1; single-entry trash operations keep collision an
 | `k` / `Up` | Select the previous note. |
 | `g` / `Home` | Jump to the first note. |
 | `G` / `End` | Jump to the last note. |
-| `[` / `]` | Scroll the preview one visual line. |
-| `Page Up` / `Page Down` | Scroll the preview one viewport. |
+| `Enter` | Focus the note surface in read mode. |
+| `j` / `k`, `[` / `]` | Scroll the focused note one visual line. |
+| `Page Up` / `Page Down` | Scroll the focused note one viewport. |
 | `n` | Create a note by title. |
 | `/` | Open the centered fuzzy-search panel for slugs, titles, and tags, with live note preview. |
-| `e` / `t` / `b` | Edit the selected note's title, tags, or body. |
+| `e` | Open or reattach `$VISUAL`/`$EDITOR` inside the note surface. |
+| `F6` | Detach from the embedded editor without stopping it. |
 | `d` | Request deletion of the selected note; `y` confirms and `n`/`Esc` cancels. |
 | `r` | Reload notes from disk. |
 | `h` / `?` | Toggle the help overlay. |
@@ -213,6 +215,8 @@ Bulk deletion is not part of v1; single-entry trash operations keep collision an
 | `q` / `Ctrl-C` | Quit. |
 
 Selection wraps at the beginning and end of the list.
+
+When the embedded editor is attached, it owns every ordinary key, including `Esc`, `Ctrl-C`, and Vim commands. Exit with the editor's normal `:q` or `:wq`; Ztk validates and applies the temporary buffer after a successful exit. `F6` is the only host-owned editor key and returns to read mode while leaving the editor session running. The configured `$VISUAL`/`$EDITOR` command must be a terminal editor such as `nvim`, `vim`, or `vi`.
 
 ## Note format
 

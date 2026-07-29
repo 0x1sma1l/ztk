@@ -29,6 +29,8 @@ thiserror = "2.0.12"
 tempfile = "3"
 toml = "0.9"
 unicode-width = "0.2"
+tui-term = "=0.2.0"
+portable-pty = "=0.8.1"
 
 [profile.release]
 lto = "thin"

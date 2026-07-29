@@ -1,24 +1,25 @@
 use color_eyre::Result;
 use ratatui::DefaultTerminal;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use ztk::core::note::Note;
 use ztk::core::usecases::list as list_usecase;
-use ztk::core::usecases::{create, delete, edit};
+use ztk::core::usecases::{create, delete};
 use ztk::storage::local_repo::LocalMarkdownRepo;
 
+use super::editor::EditorSession;
 use super::events;
 use super::ui;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum UiMode {
     #[default]
-    Normal,
+    Browse,
+    Read,
+    Editor,
     Help,
     CreateTitle,
-    EditTitle,
-    EditTags,
-    EditBody,
     Search,
     ConfirmDelete,
 }
@@ -40,6 +41,9 @@ pub struct App {
     notes_dir: PathBuf,
     search_matches: Vec<String>,
     search_selected_index: Option<usize>,
+    editor: Option<EditorSession>,
+    editor_cols: u16,
+    editor_rows: u16,
 }
 
 impl App {
@@ -72,19 +76,31 @@ impl App {
     /// Run the application's main loop.
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.running = true;
+        let mut redraw = true;
         while self.running {
             let size = terminal.size()?;
             let area = ratatui::layout::Rect::new(0, 0, size.width, size.height);
             let (max_scroll, page_size) = ui::preview_metrics(&self, area);
             self.update_preview_metrics(max_scroll, page_size);
-            terminal.draw(|frame| ui::render(frame, &self))?;
-            events::handle_crossterm_events(&mut self)?;
+            let (editor_cols, editor_rows) = ui::note_surface_size(area);
+            self.update_editor_size(editor_cols, editor_rows);
+            redraw |= self.poll_editor();
+            redraw |= self.editor.as_ref().is_some_and(EditorSession::take_dirty);
+            if redraw {
+                terminal.draw(|frame| ui::render(frame, &self))?;
+            }
+            redraw = events::handle_crossterm_events(&mut self, Duration::from_millis(16))?;
         }
         Ok(())
     }
 
     /// Set running to false to quit the application.
     pub fn quit(&mut self) {
+        if self.editor.is_some() {
+            self.mode = UiMode::Editor;
+            self.set_status_message("close the editor with :q before quitting Ztk (F6 detaches)");
+            return;
+        }
         self.running = false;
     }
 
@@ -200,7 +216,7 @@ impl App {
         self.mode = if self.show_help {
             UiMode::Help
         } else {
-            UiMode::Normal
+            UiMode::Browse
         };
     }
 
@@ -212,23 +228,9 @@ impl App {
         &self.input
     }
 
-    pub fn begin_input(&mut self, mode: UiMode) {
-        self.input = match mode {
-            UiMode::EditTitle => self
-                .selected_note()
-                .map(|note| note.title.clone())
-                .unwrap_or_default(),
-            UiMode::EditTags => self
-                .selected_note()
-                .map(|note| note.tags.join(","))
-                .unwrap_or_default(),
-            UiMode::EditBody => self
-                .selected_note()
-                .map(|note| note.body.clone())
-                .unwrap_or_default(),
-            _ => String::new(),
-        };
-        self.mode = mode;
+    pub fn begin_create(&mut self) {
+        self.input.clear();
+        self.mode = UiMode::CreateTitle;
     }
 
     pub fn begin_delete(&mut self) {
@@ -236,6 +238,122 @@ impl App {
             self.mode = UiMode::ConfirmDelete;
         } else {
             self.set_status_message("no note selected");
+        }
+    }
+
+    pub fn begin_read(&mut self) {
+        if self.selected_note().is_some() {
+            self.mode = UiMode::Read;
+            self.reset_preview_scroll();
+        }
+    }
+
+    pub fn return_to_browse(&mut self) {
+        self.mode = UiMode::Browse;
+        self.reset_preview_scroll();
+    }
+
+    pub fn begin_editor(&mut self) {
+        if self.editor.is_some() {
+            self.mode = UiMode::Editor;
+            self.set_status_message("editor attached; F6 returns to read mode");
+            return;
+        }
+
+        let Some(slug) = self.selected_note().map(|note| note.slug.clone()) else {
+            self.set_status_message("no note selected");
+            return;
+        };
+        let command = match crate::cli::edit::configured_editor_command() {
+            Ok(command) => command,
+            Err(error) => {
+                self.set_status_message(format!("editor failed: {error}"));
+                return;
+            }
+        };
+        match EditorSession::start(
+            &self.notes_dir,
+            &slug,
+            command,
+            self.editor_cols.max(1),
+            self.editor_rows.max(1),
+        ) {
+            Ok(editor) => {
+                self.editor = Some(editor);
+                self.mode = UiMode::Editor;
+                self.set_status_message("editor attached; :wq saves and returns, F6 detaches");
+            }
+            Err(error) => self.set_status_message(format!("editor failed: {error}")),
+        }
+    }
+
+    pub fn detach_editor(&mut self) {
+        if self.editor.is_some() {
+            self.mode = UiMode::Read;
+            self.set_status_message("editor detached and still running; press e to reattach");
+        }
+    }
+
+    pub fn editor(&self) -> Option<&EditorSession> {
+        self.editor.as_ref()
+    }
+
+    pub fn send_editor_key(&mut self, key: crossterm::event::KeyEvent) {
+        if let Some(editor) = self.editor.as_mut()
+            && let Err(error) = editor.send_key(key)
+        {
+            self.set_status_message(format!("editor input failed: {error}"));
+        }
+    }
+
+    pub fn send_editor_paste(&mut self, text: &str) {
+        if let Some(editor) = self.editor.as_mut()
+            && let Err(error) = editor.send_paste(text)
+        {
+            self.set_status_message(format!("editor paste failed: {error}"));
+        }
+    }
+
+    fn update_editor_size(&mut self, cols: u16, rows: u16) {
+        self.editor_cols = cols;
+        self.editor_rows = rows;
+        if let Some(editor) = self.editor.as_mut()
+            && let Err(error) = editor.resize(cols, rows)
+        {
+            self.set_status_message(format!("editor resize failed: {error}"));
+        }
+    }
+
+    fn poll_editor(&mut self) -> bool {
+        let outcome = self
+            .editor
+            .as_mut()
+            .map(EditorSession::has_exited)
+            .transpose();
+        match outcome {
+            Ok(Some(Some(success))) => {
+                let editor = self.editor.take().expect("polled editor exists");
+                self.mode = UiMode::Read;
+                if success {
+                    match editor.commit() {
+                        Ok(slug) => {
+                            self.refresh_notes_selecting(Some(&slug));
+                            self.mode = UiMode::Read;
+                            self.set_status_message(format!("saved {slug}"));
+                        }
+                        Err(error) => self
+                            .set_status_message(format!("could not save editor changes: {error}")),
+                    }
+                } else {
+                    self.set_status_message("editor exited unsuccessfully; changes were not saved");
+                }
+                true
+            }
+            Ok(Some(None) | None) => false,
+            Err(error) => {
+                self.set_status_message(format!("editor failed: {error}"));
+                true
+            }
         }
     }
 
@@ -303,7 +421,7 @@ impl App {
                 };
             }
             Err(error) => {
-                self.mode = UiMode::Normal;
+                self.mode = UiMode::Browse;
                 self.search_matches.clear();
                 self.search_selected_index = None;
                 self.set_status_message(format!("search failed: {error}"));
@@ -336,28 +454,15 @@ impl App {
         self.input.clear();
         self.search_matches.clear();
         self.search_selected_index = None;
-        self.mode = UiMode::Normal;
+        self.mode = UiMode::Browse;
     }
 
     pub fn submit_input(&mut self) {
-        let result = match self.mode {
-            UiMode::CreateTitle => self.submit_create(),
-            UiMode::EditTitle => self.submit_update(edit::UpdateNoteRequest {
-                title: Some(self.input.clone()),
-                ..Default::default()
-            }),
-            UiMode::EditTags => self.submit_update(edit::UpdateNoteRequest {
-                tags: Some(self.input.split(',').map(ToOwned::to_owned).collect()),
-                ..Default::default()
-            }),
-            UiMode::EditBody => self.submit_update(edit::UpdateNoteRequest {
-                body: Some(self.input.clone()),
-                ..Default::default()
-            }),
-            _ => return,
-        };
+        if self.mode != UiMode::CreateTitle {
+            return;
+        }
 
-        if let Err(error) = result {
+        if let Err(error) = self.submit_create() {
             self.set_status_message(format!("error: {error}"));
         }
     }
@@ -386,26 +491,6 @@ impl App {
         self.cancel_mode();
         self.refresh_notes_selecting(Some(&slug));
         self.set_status_message(format!("created {slug}"));
-        Ok(())
-    }
-
-    fn submit_update(
-        &mut self,
-        request: edit::UpdateNoteRequest,
-    ) -> Result<(), ztk::core::errors::CoreError> {
-        let slug = self
-            .selected_note()
-            .map(|note| note.slug.clone())
-            .ok_or_else(|| ztk::core::errors::CoreError::NoteNotFound(String::new()))?;
-        let repo = self.repository();
-        let result = edit::update_note(&repo, &slug, request)?;
-        self.cancel_mode();
-        self.refresh_notes_selecting(Some(&slug));
-        self.set_status_message(if result.changed {
-            format!("updated {slug}")
-        } else {
-            format!("unchanged {slug}")
-        });
         Ok(())
     }
 
@@ -517,7 +602,7 @@ mod tests {
     fn help_toggle_updates_mode_consistently() {
         let mut app = App::default();
         assert!(!app.show_help());
-        assert_eq!(app.mode(), UiMode::Normal);
+        assert_eq!(app.mode(), UiMode::Browse);
 
         app.toggle_help();
         assert!(app.show_help());
@@ -525,7 +610,7 @@ mod tests {
 
         app.toggle_help();
         assert!(!app.show_help());
-        assert_eq!(app.mode(), UiMode::Normal);
+        assert_eq!(app.mode(), UiMode::Browse);
     }
 
     #[test]
@@ -590,40 +675,19 @@ mod tests {
     }
 
     #[test]
-    fn tui_actions_create_search_update_and_delete_through_core_use_cases() {
+    fn tui_actions_create_search_and_delete_through_core_use_cases() {
         let root = TempDir::new().unwrap();
         let mut app = App::with_notes_dir(root.path().join("notes"));
 
-        app.begin_input(UiMode::CreateTitle);
+        app.begin_create();
         app.input = "Rust Ownership".to_string();
         app.submit_input();
-        assert_eq!(app.mode(), UiMode::Normal);
+        assert_eq!(app.mode(), UiMode::Browse);
         assert_eq!(
             app.selected_note().map(|note| note.slug.as_str()),
             Some("rust-ownership")
         );
         assert!(root.path().join("notes/rust-ownership.md").exists());
-
-        app.begin_input(UiMode::EditTags);
-        app.input = "rust,learning".to_string();
-        app.submit_input();
-        assert_eq!(app.selected_note().unwrap().tags, ["rust", "learning"]);
-
-        app.begin_input(UiMode::EditTitle);
-        app.clear_input();
-        app.input = "Ownership Rules".to_string();
-        app.submit_input();
-        assert_eq!(app.selected_note().unwrap().title, "Ownership Rules");
-        assert_eq!(app.selected_note().unwrap().slug, "rust-ownership");
-
-        app.begin_input(UiMode::EditBody);
-        app.clear_input();
-        app.input = "Updated from the TUI".to_string();
-        app.submit_input();
-        assert_eq!(
-            app.selected_note().unwrap().body.trim_start_matches('\n'),
-            "Updated from the TUI"
-        );
 
         app.begin_delete();
         app.confirm_delete();
@@ -635,7 +699,7 @@ mod tests {
     fn validation_error_preserves_mode_and_typed_input() {
         let root = TempDir::new().unwrap();
         let mut app = App::with_notes_dir(root.path().join("notes"));
-        app.begin_input(UiMode::CreateTitle);
+        app.begin_create();
         app.input = "   ".to_string();
 
         app.submit_input();
