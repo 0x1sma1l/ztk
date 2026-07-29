@@ -65,8 +65,14 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
-      - name: Create release and upload archives
+      - name: Create or update release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release create "${RELEASE_TAG}" artifacts/* --generate-notes --verify-tag
+        run: |
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} already exists; replacing its archives."
+            gh release upload "${RELEASE_TAG}" artifacts/* --clobber
+          else
+            gh release create "${RELEASE_TAG}" artifacts/* --generate-notes --verify-tag
+          fi
