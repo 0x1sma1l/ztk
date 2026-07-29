@@ -189,7 +189,7 @@ Relative command-line and environment paths resolve from the working directory. 
 
 CLI v1 consists of the commands in the table above. Successful commands exit with status `0`; runtime or data errors exit with status `1`; command-line parsing errors exit with status `2`. Normal results go to stdout, while errors and warnings go to stderr. Collection commands may return healthy results with status `0` while warning that malformed notes were skipped.
 
-Human output follows a stable stream convention: requested records and successful mutation summaries go to stdout; recoverable diagnostics begin with `warning:` on stderr; fatal errors use stderr and a non-zero status. Redirected output contains no ANSI color sequences. Ztk does not currently expose JSON: machine-readable output will be added only with a versioned schema shared across commands, rather than freezing inconsistent ad hoc shapes.
+Human output follows a stable stream convention: requested records and successful mutation summaries go to stdout; recoverable diagnostics begin with `warning:` on stderr; fatal diagnostics begin with `error:` on stderr and use a non-zero status. Interactive output uses a restrained Vesper-derived palette and borderless aligned tables, while redirected output contains no ANSI color sequences. Ztk does not currently expose JSON: machine-readable output will be added only with a versioned schema shared across commands, rather than freezing inconsistent ad hoc shapes.
 
 Bulk deletion is not part of v1; single-entry trash operations keep collision and partial-failure behavior understandable before bulk workflows are designed. Tag and date filters are also deferred: search already retrieves notes by tags, while exact filter syntax should be designed together with stable machine-readable output instead of becoming an ad hoc argument set.
 
@@ -207,7 +207,7 @@ Bulk deletion is not part of v1; single-entry trash operations keep collision an
 | `n` | Create a note by title. |
 | `/` | Open the centered fuzzy-search panel for slugs, titles, and tags, with live note preview. |
 | `e` | Open or reattach `$VISUAL`/`$EDITOR` inside the note surface. |
-| `F6` | Detach from the embedded editor without stopping it. |
+| `F6` | Detach without applying saved editor changes; they apply after the editor exits. |
 | `d` | Request deletion of the selected note; `y` confirms and `n`/`Esc` cancels. |
 | `r` | Reload notes from disk. |
 | `h` / `?` | Toggle the help overlay. |
@@ -216,7 +216,7 @@ Bulk deletion is not part of v1; single-entry trash operations keep collision an
 
 Selection wraps at the beginning and end of the list.
 
-When the embedded editor is attached, it owns every ordinary key, including `Esc`, `Ctrl-C`, and Vim commands. Exit with the editor's normal `:q` or `:wq`; Ztk validates and applies the temporary buffer after a successful exit. `F6` is the only host-owned editor key and returns to read mode while leaving the editor session running. The configured `$VISUAL`/`$EDITOR` command must be a terminal editor such as `nvim`, `vim`, or `vi`.
+When the embedded editor is attached, it owns every ordinary key, including `Esc`, `Ctrl-C`, and Vim commands. `:w` saves only the editor's temporary working copy. Ztk validates and applies the last saved copy after the editor exits successfully with `:q`, `:wq`, or another normal editor command. `F6` only detaches: it returns to read mode while leaving the editor running, so the read surface continues to show the last applied note until you reattach and exit the editor. The configured `$VISUAL`/`$EDITOR` command must be a terminal editor such as `nvim`, `vim`, or `vi`.
 
 ## Note format
 

@@ -38,6 +38,11 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+fn assert_no_ansi(output: &Output) {
+    assert!(!output.stdout.windows(2).any(|bytes| bytes == b"\x1b["));
+    assert!(!output.stderr.windows(2).any(|bytes| bytes == b"\x1b["));
+}
+
 #[test]
 fn list_prints_valid_notes_and_warns_about_malformed_notes() {
     let root = TempDir::new().expect("failed to create temp dir");
@@ -47,6 +52,8 @@ fn list_prints_valid_notes_and_warns_about_malformed_notes() {
     let output = run(&root, "list");
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
+    assert_no_ansi(&output);
+    assert!(stdout(&output).contains("#  SLUG"));
     assert!(stdout(&output).contains("valid-note"));
     assert!(stderr(&output).contains("skipped broken-note.md"));
     assert!(stderr(&output).contains("skipped 1 unreadable note(s)"));
@@ -61,6 +68,7 @@ fn stats_counts_readable_notes_and_reports_skipped_notes() {
     let output = run(&root, "stats");
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
+    assert_no_ansi(&output);
     assert_eq!(stdout(&output), "Total notes: 1\n");
     assert!(stderr(&output).contains("skipped 1 unreadable note(s)"));
 }

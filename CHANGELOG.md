@@ -6,6 +6,14 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-29
+
+### Changed
+
+- Added a restrained Vesper orange-and-neutral TUI palette with consistent focus, selection, hierarchy, and overlay styling while preserving the terminal background.
+- Refined interactive CLI output with the same restrained Vesper palette, aligned collection and lint output, and consistent action, warning, and error hierarchy while keeping redirected output plain.
+- Clarified that `F6` only detaches the embedded editor and that saved changes are validated and applied after the editor exits.
+
 ## [0.4.0] - 2026-07-29
 
 ### Added
@@ -62,7 +70,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 - Added strict slug and storage-boundary validation, compatible frontmatter parsing, typed calendar dates, and recoverable handling of malformed notes.
 - Added cross-platform CI, release packaging, CLI integration tests, TUI tests, and Rust 1.85 compatibility.
 
-[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/0x1sma1l/ztk/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/0x1sma1l/ztk/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/0x1sma1l/ztk/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/0x1sma1l/ztk/compare/v0.1.0...v0.2.0

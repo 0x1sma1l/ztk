@@ -1,4 +1,4 @@
-use crate::errors::AppError;
+use crate::{cli::output, errors::AppError};
 use std::path::Path;
 use ztk::core::repository::NoteLoadIssue;
 use ztk::core::usecases::list as list_usecase;
@@ -10,20 +10,50 @@ pub fn list_notes(notes_dir: &Path) -> Result<(), AppError> {
 
     if collection.notes.is_empty() {
         if collection.issues.is_empty() {
-            println!("No notes found. Try creating one first with `ztk new <title>`.");
+            println!(
+                "{} {}",
+                output::accent("No notes found."),
+                output::muted("Create one with `ztk new <title>`.")
+            );
         } else {
-            println!("No readable notes found.");
+            println!("{}", output::accent("No readable notes found."));
         }
     } else {
-        println!("Notes (slug | date | tags):\n");
+        let number_width = collection.notes.len().to_string().len().max(1);
+        let slug_width = collection
+            .notes
+            .iter()
+            .map(|note| note.slug.len())
+            .max()
+            .unwrap_or_default()
+            .max("SLUG".len());
+
+        println!(
+            "{}  {}\n",
+            output::accent("Notes"),
+            output::muted(format!("{} total", collection.notes.len()))
+        );
+        println!(
+            "  {}  {}  {}  {}",
+            output::muted(format!("{:>number_width$}", "#")),
+            output::muted(format!("{:<slug_width$}", "SLUG")),
+            output::muted("DATE"),
+            output::muted("TAGS")
+        );
         for (i, note) in collection.notes.iter().enumerate() {
-            let tags_display = if note.tags.is_empty() {
-                String::new()
+            let tags = if note.tags.is_empty() {
+                "—".to_string()
             } else {
-                format!(" | tags: {}", note.tags.join(", "))
+                note.tags.join(", ")
             };
 
-            println!("{}. {} | {}{}", i + 1, note.slug, note.date, tags_display);
+            println!(
+                "  {}  {}  {}  {}",
+                output::muted(format!("{:>number_width$}", i + 1)),
+                output::strong(format!("{:<slug_width$}", note.slug)),
+                output::muted(note.date),
+                output::muted(tags)
+            );
         }
     }
 
@@ -34,13 +64,13 @@ pub fn list_notes(notes_dir: &Path) -> Result<(), AppError> {
 
 fn print_load_warnings(issues: &[NoteLoadIssue]) {
     for issue in issues {
-        eprintln!("warning: skipped {}.md: {}", issue.slug, issue.message);
+        output::warning(format_args!("skipped {}.md: {}", issue.slug, issue.message));
     }
 
     if !issues.is_empty() {
-        eprintln!(
-            "warning: skipped {} unreadable note(s); run `ztk lint` for a complete integrity check",
+        output::warning(format_args!(
+            "skipped {} unreadable note(s); run `ztk lint` for a complete integrity check",
             issues.len()
-        );
+        ));
     }
 }

@@ -1,21 +1,24 @@
-use crate::errors::AppError;
 use crate::fuzzy;
+use crate::{cli::output, errors::AppError};
 use std::path::Path;
 
 pub fn search_notes(notes_dir: &Path, query: Option<&str>) -> Result<(), AppError> {
     let selection = fuzzy::select_note(notes_dir, query)?;
     for issue in &selection.issues {
-        eprintln!("warning: skipped {}.md: {}", issue.slug, issue.message);
+        output::warning(format_args!("skipped {}.md: {}", issue.slug, issue.message));
     }
     if !selection.issues.is_empty() {
-        eprintln!(
-            "warning: skipped {} unreadable note(s); run `ztk lint` for a complete integrity check",
+        output::warning(format_args!(
+            "skipped {} unreadable note(s); run `ztk lint` for a complete integrity check",
             selection.issues.len()
-        );
+        ));
     }
 
     if selection.candidate_count == 0 {
-        println!("No readable notes available to search.");
+        println!(
+            "{}",
+            output::accent("No readable notes available to search.")
+        );
         return Ok(());
     }
 

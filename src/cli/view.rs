@@ -1,7 +1,7 @@
 use std::path::Path;
 use termimad::MadSkin;
 
-use crate::errors::AppError;
+use crate::{cli::output, errors::AppError};
 use ztk::core::usecases::read as read_usecase;
 use ztk::storage::local_repo::LocalMarkdownRepo;
 
@@ -10,7 +10,11 @@ pub fn view_note(notes_dir: &Path, slug: &str) -> Result<(), AppError> {
     let note = read_usecase::read_note(&repo, slug)?;
 
     let skin = MadSkin::default();
-    println!("Viewing: notes/{}.md\n", slug);
+    println!(
+        "{} {}\n",
+        output::accent("Viewing:"),
+        output::strong(format!("notes/{slug}.md"))
+    );
     skin.print_text(&note.body);
 
     Ok(())

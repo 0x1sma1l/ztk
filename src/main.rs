@@ -26,12 +26,12 @@ fn main() {
     let notes_dir = match config::resolve_notes_dir(cli.notes_dir.clone()) {
         Ok(path) => path,
         Err(error) => {
-            eprintln!("{error}");
+            cli::output::error(error);
             std::process::exit(1);
         }
     };
     if let Err(error) = config::ensure_notes_dir(&notes_dir) {
-        eprintln!("{error}");
+        cli::output::error(error);
         std::process::exit(1);
     }
 
@@ -67,7 +67,7 @@ fn main() {
         },
         Command::Tui => {
             if let Err(err) = run_tui(&notes_dir) {
-                eprintln!("TUI error: {}", err);
+                cli::output::error(format!("TUI: {err}"));
                 std::process::exit(1);
             }
 
@@ -76,7 +76,7 @@ fn main() {
     };
 
     if let Err(err) = result {
-        eprintln!("{}", err);
+        cli::output::error(err);
         std::process::exit(1);
     }
 }

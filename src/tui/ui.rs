@@ -7,7 +7,7 @@ use ratatui::{
 };
 use unicode_width::UnicodeWidthStr;
 
-use super::app::App;
+use super::app::{App, UiMode};
 
 pub fn render(frame: &mut Frame, app: &App) {
     let layout = screen_layout(frame.area());
@@ -47,12 +47,15 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         columns[0],
     );
     frame.render_widget(
-        Paragraph::new(Line::from(format!(
-            "{}  ·  {mode}  ·  {} notes ",
-            app.notes_dir().display(),
-            app.notes().len()
-        )))
-        .style(theme::MUTED_STYLE)
+        Paragraph::new(Line::from(vec![
+            Span::styled(app.notes_dir().display().to_string(), theme::MUTED_STYLE),
+            Span::styled("  ·  ", theme::MUTED_STYLE),
+            Span::styled(mode, theme::MODE_STYLE),
+            Span::styled(
+                format!("  ·  {} notes ", app.notes().len()),
+                theme::MUTED_STYLE,
+            ),
+        ]))
         .right_aligned(),
         columns[1],
     );
@@ -148,7 +151,7 @@ fn render_list_pane(frame: &mut Frame, area: Rect, app: &App) {
                 .style(theme::PANE_BLOCK_STYLE),
         )
         .highlight_style(theme::SELECTED_ROW_STYLE)
-        .highlight_symbol(">> ");
+        .highlight_symbol("› ");
 
     let mut list_state = ListState::default().with_selected(app.selected_index());
     frame.render_stateful_widget(list, area, &mut list_state);
@@ -180,6 +183,7 @@ fn render_preview_pane(frame: &mut Frame, area: Rect, app: &App) {
 fn preview_paragraph(app: &App) -> Paragraph<'_> {
     let preview = preview_content(app);
     Paragraph::new(preview)
+        .style(theme::BODY_TEXT_STYLE)
         .wrap(Wrap { trim: false })
         .scroll((app.preview_scroll(), 0))
 }
@@ -247,11 +251,7 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
     } else {
         app.status_message()
     };
-    let keys = match app.mode() {
-        super::app::UiMode::Read => " j/k scroll  PgUp/PgDn page  e edit  Esc notes ",
-        super::app::UiMode::Editor => " editor owns keys  :wq save & close  :q close  F6 detach ",
-        _ => " n new  Enter read  e edit  / search  h/? help  q/Esc exit ",
-    };
+    let keys = footer_keys(app.mode());
     let text = Text::from(vec![
         Line::from(vec![
             Span::styled(" ● ", theme::STATUS_DOT_STYLE),
@@ -261,6 +261,14 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
     ]);
 
     frame.render_widget(Paragraph::new(text).style(theme::FOOTER_BLOCK_STYLE), area);
+}
+
+fn footer_keys(mode: UiMode) -> &'static str {
+    match mode {
+        UiMode::Read => " j/k scroll  PgUp/PgDn page  e edit  Esc notes ",
+        UiMode::Editor => " editor owns keys  :wq save + apply  :q apply saved  F6 detach only ",
+        _ => " n new  Enter read  e edit  / search  h/? help  q/Esc exit ",
+    }
 }
 
 fn render_help_overlay(frame: &mut Frame, app: &App) {
@@ -316,8 +324,6 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
 }
 
 fn render_action_overlay(frame: &mut Frame, app: &App) {
-    use super::app::UiMode;
-
     let (title, prompt) = match app.mode() {
         UiMode::CreateTitle => (" Create note ", "Title"),
         UiMode::ConfirmDelete => {
@@ -331,10 +337,12 @@ fn render_action_overlay(frame: &mut Frame, app: &App) {
                 Paragraph::new(format!(
                     "Move {slug} to recoverable trash? Press y to confirm, n or Esc to cancel."
                 ))
+                .style(theme::BODY_TEXT_STYLE)
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title(" Confirm delete "),
+                        .title(Line::from(" Confirm delete ").style(theme::PANE_TITLE_STYLE))
+                        .style(theme::OVERLAY_BLOCK_STYLE),
                 )
                 .wrap(Wrap { trim: true }),
                 area,
@@ -351,7 +359,13 @@ fn render_action_overlay(frame: &mut Frame, app: &App) {
             "{prompt}:\n{}\n\nEnter submit | Esc cancel | Ctrl-U clear",
             app.input()
         ))
-        .block(Block::default().borders(Borders::ALL).title(title))
+        .style(theme::BODY_TEXT_STYLE)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(Line::from(title).style(theme::PANE_TITLE_STYLE))
+                .style(theme::OVERLAY_BLOCK_STYLE),
+        )
         .wrap(Wrap { trim: false }),
         area,
     );
@@ -382,9 +396,13 @@ fn render_search_overlay(frame: &mut Frame, app: &App) {
     frame.render_widget(
         Paragraph::new(Line::from(vec![
             Span::styled(" ❯ ", theme::SEARCH_POINTER_STYLE),
-            Span::raw(app.input()),
+            Span::styled(app.input(), theme::BODY_TEXT_STYLE),
         ]))
-        .block(Block::default().borders(Borders::BOTTOM)),
+        .block(
+            Block::default()
+                .borders(Borders::BOTTOM)
+                .style(theme::SEARCH_BLOCK_STYLE),
+        ),
         rows[0],
     );
 
@@ -399,15 +417,17 @@ fn render_search_overlay(frame: &mut Frame, app: &App) {
         .iter()
         .filter_map(|slug| app.notes().iter().find(|note| note.slug == *slug))
         .map(|note| {
-            ListItem::new(Line::from(format!(
-                "{}  {}",
-                note.title,
-                if note.tags.is_empty() {
-                    String::new()
-                } else {
-                    format!("[{}]", note.tags.join(", "))
-                }
-            )))
+            ListItem::new(Line::from(vec![
+                Span::styled(note.title.as_str(), theme::ROW_TITLE_STYLE),
+                Span::styled(
+                    if note.tags.is_empty() {
+                        String::new()
+                    } else {
+                        format!("  [{}]", note.tags.join(", "))
+                    },
+                    theme::ROW_META_STYLE,
+                ),
+            ]))
         })
         .collect::<Vec<_>>();
     let results_border = if rows[1].width < 70 {
@@ -419,10 +439,10 @@ fn render_search_overlay(frame: &mut Frame, app: &App) {
         .block(
             Block::default()
                 .borders(results_border)
-                .title(Line::from(format!(
-                    " Results ({}) ",
-                    app.search_matches().len()
-                )))
+                .title(
+                    Line::from(format!(" Results ({}) ", app.search_matches().len()))
+                        .style(theme::PANE_TITLE_STYLE),
+                )
                 .style(theme::SEARCH_BLOCK_STYLE),
         )
         .highlight_style(theme::SELECTED_ROW_STYLE)
@@ -436,9 +456,10 @@ fn render_search_overlay(frame: &mut Frame, app: &App) {
         .unwrap_or_else(|| "No matching notes".to_string());
     frame.render_widget(
         Paragraph::new(preview)
+            .style(theme::BODY_TEXT_STYLE)
             .block(
                 Block::default()
-                    .title(" Preview ")
+                    .title(Line::from(" Preview ").style(theme::PANE_TITLE_STYLE))
                     .style(theme::SEARCH_BLOCK_STYLE),
             )
             .wrap(Wrap { trim: false }),
@@ -490,46 +511,52 @@ fn centered_rect(width_percent: u16, height_percent: u16, area: Rect) -> Rect {
 mod theme {
     use super::*;
 
-    // Keep the terminal's native foreground/background and use neutral gray only
-    // for secondary information.
+    // Preserve the terminal/fzf background and use Vesper's peach-orange accent
+    // throughout. The selected surface matches Vesper's active list background.
+    const ACCENT: Color = Color::Rgb(255, 199, 153);
+    const ACCENT_TEXT: Color = ACCENT;
+    const PRIMARY_TEXT: Color = Color::Indexed(252);
+    const SECONDARY_TEXT: Color = Color::Indexed(245);
+    const BORDER: Color = Color::Indexed(239);
+    const SELECTED_SURFACE: Color = Color::Rgb(35, 35, 35);
+
     pub const TITLE_STYLE: Style = Style::new()
-        .fg(Color::Reset)
+        .fg(ACCENT)
         .bg(Color::Reset)
         .add_modifier(Modifier::BOLD);
 
-    pub const MUTED_STYLE: Style = Style::new().fg(Color::Indexed(245)).bg(Color::Reset);
-    pub const PANE_BLOCK_STYLE: Style = Style::new().bg(Color::Reset);
-    pub const PANE_TITLE_STYLE: Style = Style::new().fg(Color::Reset).add_modifier(Modifier::BOLD);
-    pub const ROW_TITLE_STYLE: Style = Style::new().fg(Color::Reset);
-    pub const ROW_META_STYLE: Style = Style::new().fg(Color::Indexed(245));
+    pub const MODE_STYLE: Style = Style::new().fg(ACCENT).add_modifier(Modifier::BOLD);
+    pub const BODY_TEXT_STYLE: Style = Style::new().fg(PRIMARY_TEXT).bg(Color::Reset);
+    pub const MUTED_STYLE: Style = Style::new().fg(SECONDARY_TEXT).bg(Color::Reset);
+    pub const PANE_BLOCK_STYLE: Style = Style::new().fg(BORDER).bg(Color::Reset);
+    pub const PANE_TITLE_STYLE: Style = Style::new().fg(ACCENT).add_modifier(Modifier::BOLD);
+    pub const ROW_TITLE_STYLE: Style = Style::new().fg(PRIMARY_TEXT);
+    pub const ROW_META_STYLE: Style = Style::new().fg(SECONDARY_TEXT);
     pub const SELECTED_ROW_STYLE: Style = Style::new()
-        .fg(Color::Indexed(254))
-        .bg(Color::Indexed(237))
+        .fg(ACCENT_TEXT)
+        .bg(SELECTED_SURFACE)
         .add_modifier(Modifier::BOLD);
     pub const FOOTER_BLOCK_STYLE: Style = Style::new().bg(Color::Reset);
-    pub const STATUS_DOT_STYLE: Style = Style::new().fg(Color::Indexed(245));
-    pub const STATUS_TEXT_STYLE: Style = Style::new().fg(Color::Indexed(245));
-    pub const FOOTER_TEXT_STYLE: Style = Style::new().fg(Color::Indexed(245));
+    pub const STATUS_DOT_STYLE: Style = Style::new().fg(ACCENT);
+    pub const STATUS_TEXT_STYLE: Style = Style::new().fg(PRIMARY_TEXT);
+    pub const FOOTER_TEXT_STYLE: Style = Style::new().fg(SECONDARY_TEXT);
     pub const OVERLAY_BACKDROP_STYLE: Style = Style::new().bg(Color::Reset);
-    pub const HELP_BLOCK_STYLE: Style = Style::new().bg(Color::Reset);
-    pub const SEARCH_BLOCK_STYLE: Style = Style::new().fg(Color::Reset).bg(Color::Reset);
-    pub const SEARCH_POINTER_STYLE: Style =
-        Style::new().fg(Color::Reset).add_modifier(Modifier::BOLD);
-    pub const HELP_TITLE_STYLE: Style = Style::new()
-        .fg(Color::Indexed(254))
-        .add_modifier(Modifier::BOLD);
-    pub const HELP_SECTION_STYLE: Style =
-        Style::new().fg(Color::Reset).add_modifier(Modifier::BOLD);
-    pub const HELP_TEXT_STYLE: Style = Style::new().fg(Color::Reset);
+    pub const OVERLAY_BLOCK_STYLE: Style = Style::new().fg(BORDER).bg(Color::Reset);
+    pub const HELP_BLOCK_STYLE: Style = Style::new().fg(BORDER).bg(Color::Reset);
+    pub const SEARCH_BLOCK_STYLE: Style = Style::new().fg(BORDER).bg(Color::Reset);
+    pub const SEARCH_POINTER_STYLE: Style = Style::new().fg(ACCENT).add_modifier(Modifier::BOLD);
+    pub const HELP_TITLE_STYLE: Style = Style::new().fg(ACCENT_TEXT).add_modifier(Modifier::BOLD);
+    pub const HELP_SECTION_STYLE: Style = Style::new().fg(ACCENT).add_modifier(Modifier::BOLD);
+    pub const HELP_TEXT_STYLE: Style = Style::new().fg(PRIMARY_TEXT);
 }
 
 #[cfg(test)]
 mod tests {
-    use ratatui::{Terminal, backend::TestBackend, layout::Rect};
+    use ratatui::{Terminal, backend::TestBackend, layout::Rect, prelude::Color};
     use ztk::core::note::Note;
 
-    use super::{preview_metrics, render};
-    use crate::tui::app::App;
+    use super::{footer_keys, preview_metrics, render, theme};
+    use crate::tui::app::{App, UiMode};
 
     fn rendered_text(app: &App, width: u16, height: u16) -> String {
         let backend = TestBackend::new(width, height);
@@ -561,6 +588,26 @@ mod tests {
     }
 
     #[test]
+    fn theme_uses_one_accent_and_preserves_the_terminal_background() {
+        for style in [
+            theme::TITLE_STYLE,
+            theme::MODE_STYLE,
+            theme::PANE_TITLE_STYLE,
+            theme::STATUS_DOT_STYLE,
+            theme::SEARCH_POINTER_STYLE,
+            theme::HELP_SECTION_STYLE,
+        ] {
+            assert_eq!(style.fg, Some(Color::Rgb(255, 199, 153)));
+        }
+        assert_eq!(theme::BODY_TEXT_STYLE.bg, Some(Color::Reset));
+        assert_eq!(
+            theme::SELECTED_ROW_STYLE.fg,
+            Some(Color::Rgb(255, 199, 153))
+        );
+        assert_eq!(theme::SELECTED_ROW_STYLE.bg, Some(Color::Rgb(35, 35, 35)));
+    }
+
+    #[test]
     fn footer_renders_current_status_message() {
         let mut app = App::default();
         app.set_status_message("loaded 3 note(s), skipped 1 invalid file(s)");
@@ -578,6 +625,15 @@ mod tests {
         let output = rendered_text(&app, 50, 16);
 
         assert!(output.contains("ready"));
+    }
+
+    #[test]
+    fn editor_footer_distinguishes_applying_changes_from_detaching() {
+        let keys = footer_keys(UiMode::Editor);
+
+        assert!(keys.contains(":wq save + apply"));
+        assert!(keys.contains(":q apply saved"));
+        assert!(keys.contains("F6 detach only"));
     }
 
     #[test]

@@ -98,7 +98,9 @@ impl App {
     pub fn quit(&mut self) {
         if self.editor.is_some() {
             self.mode = UiMode::Editor;
-            self.set_status_message("close the editor with :q before quitting Ztk (F6 detaches)");
+            self.set_status_message(
+                "exit the editor with :q or :wq before quitting; F6 only detaches",
+            );
             return;
         }
         self.running = false;
@@ -256,7 +258,9 @@ impl App {
     pub fn begin_editor(&mut self) {
         if self.editor.is_some() {
             self.mode = UiMode::Editor;
-            self.set_status_message("editor attached; F6 returns to read mode");
+            self.set_status_message(
+                "editor attached; exit it to apply saved changes; F6 only detaches",
+            );
             return;
         }
 
@@ -281,7 +285,9 @@ impl App {
             Ok(editor) => {
                 self.editor = Some(editor);
                 self.mode = UiMode::Editor;
-                self.set_status_message("editor attached; :wq saves and returns, F6 detaches");
+                self.set_status_message(
+                    "editor attached; :wq saves and applies changes; F6 only detaches",
+                );
             }
             Err(error) => self.set_status_message(format!("editor failed: {error}")),
         }
@@ -290,7 +296,9 @@ impl App {
     pub fn detach_editor(&mut self) {
         if self.editor.is_some() {
             self.mode = UiMode::Read;
-            self.set_status_message("editor detached and still running; press e to reattach");
+            self.set_status_message(
+                "editor detached; saved changes apply after it exits; press e to reattach",
+            );
         }
     }
 

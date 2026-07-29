@@ -1,35 +1,66 @@
 use std::io::{self, BufRead, IsTerminal, Write};
 use std::path::Path;
 
-use crate::errors::AppError;
+use crate::{cli::output, errors::AppError};
 use ztk::core::usecases::trash;
 use ztk::storage::local_repo::LocalMarkdownRepo;
 
 pub fn list(notes_dir: &Path) -> Result<(), AppError> {
     let collection = trash::list_trash(&LocalMarkdownRepo::new(notes_dir))?;
     if collection.entries.is_empty() {
-        println!("Trash is empty.");
+        println!("{}", output::muted("Trash is empty."));
     } else {
-        println!("Trash (id | original slug | deleted at):");
+        let id_width = collection
+            .entries
+            .iter()
+            .map(|entry| entry.id.len())
+            .max()
+            .unwrap_or_default()
+            .max("ID".len());
+        let slug_width = collection
+            .entries
+            .iter()
+            .map(|entry| entry.original_slug.len())
+            .max()
+            .unwrap_or_default()
+            .max("SLUG".len());
+
+        println!(
+            "{}  {}\n",
+            output::accent("Trash"),
+            output::muted(format!("{} recoverable", collection.entries.len()))
+        );
+        println!(
+            "  {}  {}  {}",
+            output::muted(format!("{:<id_width$}", "ID")),
+            output::muted(format!("{:<slug_width$}", "SLUG")),
+            output::muted("DELETED")
+        );
         for entry in collection.entries {
             println!(
-                "{} | {} | {}",
-                entry.id, entry.original_slug, entry.deleted_at
+                "  {}  {}  {}",
+                output::muted(format!("{:<id_width$}", entry.id)),
+                output::strong(format!("{:<slug_width$}", entry.original_slug)),
+                output::muted(entry.deleted_at)
             );
         }
     }
     for issue in collection.issues {
-        eprintln!(
-            "warning: skipped trash metadata {}: {}",
+        output::warning(format_args!(
+            "skipped trash metadata {}: {}",
             issue.slug, issue.message
-        );
+        ));
     }
     Ok(())
 }
 
 pub fn restore(notes_dir: &Path, id: &str) -> Result<(), AppError> {
     let note = trash::restore_trash(&LocalMarkdownRepo::new(notes_dir), id)?;
-    println!("note restored: {}.md", note.slug);
+    println!(
+        "{} {}",
+        output::accent("note restored:"),
+        output::strong(format!("{}.md", note.slug))
+    );
     Ok(())
 }
 
@@ -51,19 +82,28 @@ pub fn purge(notes_dir: &Path, id: Option<&str>, all: bool) -> Result<(), AppErr
     let mut reader = stdin.lock();
     let mut stdout = io::stdout().lock();
     if !confirm_purge(&mut reader, &mut stdout, &target)? {
-        writeln!(stdout, "purge cancelled")?;
+        writeln!(stdout, "{}", output::muted("purge cancelled"))?;
         return Ok(());
     }
 
     if all {
         let count = trash::purge_all_trash(&repo)?;
-        writeln!(stdout, "trash permanently purged: {count} note(s)")?;
+        writeln!(
+            stdout,
+            "{} {}",
+            output::accent("trash permanently purged:"),
+            output::strong(format!("{count} note(s)"))
+        )?;
         return Ok(());
     }
 
     let id = id.expect("clap requires a trash ID or --all");
     trash::purge_trash(&repo, id)?;
-    println!("trash entry permanently purged: {id}");
+    println!(
+        "{} {}",
+        output::accent("trash entry permanently purged:"),
+        output::strong(id)
+    );
     Ok(())
 }
 

@@ -1,7 +1,7 @@
 use std::io::{self, BufRead, IsTerminal, Write};
 use std::path::Path;
 
-use crate::errors::AppError;
+use crate::{cli::output, errors::AppError};
 use ztk::core::repository::NoteRepository;
 use ztk::core::usecases::delete::delete_note as delete_note_usecase;
 use ztk::storage::local_repo::LocalMarkdownRepo;
@@ -19,14 +19,24 @@ pub fn delete_note(notes_dir: &Path, slug: &str, force: bool) -> Result<(), AppE
         let mut reader = stdin.lock();
         let mut stdout = io::stdout().lock();
         if !confirm_delete(&mut reader, &mut stdout, slug)? {
-            writeln!(stdout, "delete cancelled: notes/{slug}.md")?;
+            writeln!(
+                stdout,
+                "{} {}",
+                output::muted("delete cancelled:"),
+                output::strong(format!("notes/{slug}.md"))
+            )?;
             return Ok(());
         }
     }
 
     let entry = delete_note_usecase(&repo, slug)?;
 
-    println!("note moved to trash: {} (trash id: {})", slug, entry.id);
+    println!(
+        "{} {} {}",
+        output::accent("note moved to trash:"),
+        output::strong(slug),
+        output::muted(format!("(trash id: {})", entry.id))
+    );
 
     Ok(())
 }

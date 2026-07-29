@@ -15,6 +15,11 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+fn assert_no_ansi(output: &Output) {
+    assert!(!output.stdout.windows(2).any(|bytes| bytes == b"\x1b["));
+    assert!(!output.stderr.windows(2).any(|bytes| bytes == b"\x1b["));
+}
+
 #[test]
 fn help_lists_the_complete_cli_v1_command_set() {
     let output = ztk(&["--help"]);
@@ -66,5 +71,7 @@ fn runtime_errors_use_exit_one_and_stderr() {
 
     assert_eq!(output.status.code(), Some(1));
     assert!(stdout(&output).is_empty());
+    assert_no_ansi(&output);
+    assert!(stderr(&output).starts_with("error: "));
     assert!(stderr(&output).contains("Note not found"));
 }

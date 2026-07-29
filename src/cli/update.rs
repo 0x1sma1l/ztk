@@ -1,4 +1,4 @@
-use crate::errors::AppError;
+use crate::{cli::output, errors::AppError};
 use std::path::Path;
 use ztk::core::usecases::edit::{self, UpdateNoteRequest};
 use ztk::storage::local_repo::LocalMarkdownRepo;
@@ -22,9 +22,17 @@ pub fn update_note(
     )?;
 
     if result.changed {
-        println!("note updated: notes/{}.md", result.note.slug);
+        println!(
+            "{} {}",
+            output::accent("note updated:"),
+            output::strong(format!("notes/{}.md", result.note.slug))
+        );
     } else {
-        println!("note unchanged: notes/{}.md", result.note.slug);
+        println!(
+            "{} {}",
+            output::muted("note unchanged:"),
+            output::strong(format!("notes/{}.md", result.note.slug))
+        );
     }
     Ok(())
 }
