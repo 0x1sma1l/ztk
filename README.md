@@ -8,7 +8,7 @@ The project is currently under active development. Its note storage, shared core
 
 - **Local first:** your notes stay on disk as readable Markdown.
 - **Terminal first:** create, inspect, edit, lint, and browse without leaving the shell.
-- **Editor friendly:** write note bodies using `$VISUAL`, `$EDITOR`, or the default `vi`.
+- **Editor friendly:** write note bodies using `$VISUAL`, `$EDITOR`, or an automatically detected terminal editor.
 - **Script aware:** commands use meaningful exit codes, including lint failures.
 - **Shared core:** CLI and TUI behavior is built on the same domain and storage layers.
 
@@ -95,7 +95,7 @@ cargo run -- tui
 
 Use `cargo run --quiet -- <command>` when you do not want Cargo's build output. Do not repeat the binary name after `--`.
 
-Create a note and open it immediately in `$VISUAL`, `$EDITOR`, or `vi`:
+Create a note and open it immediately in `$VISUAL`, `$EDITOR`, or the first available `nvim`, `vim`, `vi`, or `nano`:
 
 ```bash
 ztk new "Rust Ownership" --tags rust,learning
@@ -216,7 +216,9 @@ Bulk deletion is not part of v1; single-entry trash operations keep collision an
 
 Selection wraps at the beginning and end of the list.
 
-When the embedded editor is attached, it owns every ordinary key, including `Esc`, `Ctrl-C`, and Vim commands. `:w` saves only the editor's temporary working copy. Ztk validates and applies the last saved copy after the editor exits successfully with `:q`, `:wq`, or another normal editor command. `F6` only detaches: it returns to read mode while leaving the editor running, so the read surface continues to show the last applied note until you reattach and exit the editor. The configured `$VISUAL`/`$EDITOR` command must be a terminal editor such as `nvim`, `vim`, or `vi`.
+Editor selection uses `$VISUAL` first, then `$EDITOR`. When neither is set, Ztk uses the first available `nvim`, `vim`, `vi`, or `nano` found on `PATH`; if none is installed, it reports how to configure or install one. An explicitly configured editor that cannot be launched remains an error instead of being silently replaced.
+
+When Ztk launches Vi, Vim, or Neovim from either the CLI or TUI, it enables absolute and relative line numbers for easier navigation. When the embedded editor is attached, it owns every ordinary key, including `Esc`, `Ctrl-C`, and Vim commands. `:w` saves only the editor's temporary working copy. Ztk validates and applies the last saved copy after the editor exits successfully with `:q`, `:wq`, or another normal editor command. `F6` only detaches: it returns to read mode while leaving the editor running, so the read surface continues to show the last applied note until you reattach and exit the editor. The configured `$VISUAL`/`$EDITOR` command must be a terminal editor such as `nvim`, `vim`, `vi`, or `nano`.
 
 ## Note format
 

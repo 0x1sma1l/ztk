@@ -30,7 +30,7 @@ pub enum Command {
     },
     /// List all notes.
     List,
-    /// Edit a note in your $EDITOR.
+    /// Edit a note in your configured or detected terminal editor.
     Edit {
         /// Note slug (without .md).
         slug: String,

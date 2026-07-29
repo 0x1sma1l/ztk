@@ -11,7 +11,10 @@ use portable_pty::{Child, CommandBuilder, MasterPty, NativePtySystem, PtySize, P
 use ratatui::{Frame, layout::Rect};
 use tui_term::{vt100, widget::PseudoTerminal};
 
-use crate::{cli::edit::EditBuffer, errors::AppError};
+use crate::{
+    cli::edit::{EditBuffer, is_neovim, is_vim_family, vim_number_arguments},
+    errors::AppError,
+};
 
 pub struct EditorSession {
     edit: Option<EditBuffer>,
@@ -57,15 +60,20 @@ impl EditorSession {
             AppError::EmbeddedEditor("configured editor command is empty".to_string())
         })?;
         let mut builder = CommandBuilder::new(executable);
-        if is_vim_family(builder.get_argv()[0].as_os_str()) {
+        let editor_executable = builder.get_argv()[0].as_os_str();
+        let vim_family = is_vim_family(editor_executable);
+        let neovim = is_neovim(editor_executable);
+        let number_arguments = vim_number_arguments(editor_executable);
+        if vim_family {
             // The edit buffer is already temporary; swap files add no recovery value
             // and can fail in restricted system temporary directories.
             builder.arg("-n");
         }
-        if is_neovim(builder.get_argv()[0].as_os_str()) {
+        if neovim {
             builder.env("NVIM_LOG_FILE", null_device());
         }
         builder.args(arguments);
+        builder.args(number_arguments);
         builder.arg(edit.path());
         builder.cwd(notes_dir);
         builder.env("TERM", "xterm-256color");
@@ -185,21 +193,6 @@ fn embedded_error(error: impl fmt::Display) -> AppError {
     AppError::EmbeddedEditor(error.to_string())
 }
 
-fn is_vim_family(executable: &std::ffi::OsStr) -> bool {
-    executable_name(executable).is_some_and(|name| matches!(name.as_str(), "vi" | "vim" | "nvim"))
-}
-
-fn is_neovim(executable: &std::ffi::OsStr) -> bool {
-    executable_name(executable).is_some_and(|name| name == "nvim")
-}
-
-fn executable_name(executable: &std::ffi::OsStr) -> Option<String> {
-    std::path::Path::new(executable)
-        .file_stem()
-        .and_then(std::ffi::OsStr::to_str)
-        .map(str::to_ascii_lowercase)
-}
-
 #[cfg(unix)]
 fn null_device() -> &'static str {
     "/dev/null"
@@ -267,7 +260,7 @@ fn modified_csi(final_byte: char, modifiers: KeyModifiers) -> Vec<u8> {
 mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-    use super::{encode_key, is_vim_family};
+    use super::encode_key;
 
     #[test]
     fn editor_key_encoding_supports_text_control_and_navigation() {
@@ -283,12 +276,5 @@ mod tests {
             encode_key(KeyEvent::new(KeyCode::Up, KeyModifiers::CONTROL)),
             Some(b"\x1b[1;5A".to_vec())
         );
-    }
-
-    #[test]
-    fn vim_family_detection_supports_paths_and_ignores_gui_editors() {
-        assert!(is_vim_family(std::ffi::OsStr::new("/usr/local/bin/nvim")));
-        assert!(is_vim_family(std::ffi::OsStr::new("vim")));
-        assert!(!is_vim_family(std::ffi::OsStr::new("code")));
     }
 }

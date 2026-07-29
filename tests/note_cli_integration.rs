@@ -286,6 +286,29 @@ fn edit_reports_a_missing_editor_executable() {
     assert!(stderr(&output).contains("ztk-editor-that-does-not-exist"));
 }
 
+#[test]
+fn edit_reports_an_actionable_error_when_no_terminal_editor_is_available() {
+    let root = TempDir::new().expect("failed to create temp dir");
+    write_note(&root, "edit-me", "Original body.");
+    let empty_path = root.path().join("empty-path");
+    fs::create_dir(&empty_path).expect("failed to create empty PATH directory");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ztk"))
+        .args(["edit", "edit-me"])
+        .env("ZTK_NOTES_DIR", root.path().join("notes"))
+        .env_remove("ZTK_CONFIG")
+        .env_remove("VISUAL")
+        .env_remove("EDITOR")
+        .env("PATH", empty_path)
+        .current_dir(root.path())
+        .output()
+        .expect("failed to execute ztk edit");
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("No terminal editor found"));
+    assert!(stderr(&output).contains("Set $VISUAL or $EDITOR"));
+}
+
 #[cfg(unix)]
 #[test]
 fn edit_supports_quoted_executable_paths_and_flags() {

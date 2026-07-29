@@ -295,7 +295,7 @@ fn render_help_overlay(frame: &mut Frame, app: &App) {
         Line::from("  r             Refresh notes from storage").style(theme::HELP_TEXT_STYLE),
         Line::from("  /             Search notes").style(theme::HELP_TEXT_STYLE),
         Line::from("  n             Create a note").style(theme::HELP_TEXT_STYLE),
-        Line::from("  e             Edit the note in $VISUAL/$EDITOR")
+        Line::from("  e             Edit in the configured or detected terminal editor")
             .style(theme::HELP_TEXT_STYLE),
         Line::from("  d             Move selected note to trash with confirmation")
             .style(theme::HELP_TEXT_STYLE),

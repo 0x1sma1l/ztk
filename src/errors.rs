@@ -28,6 +28,9 @@ pub enum AppError {
         source: std::io::Error,
     },
 
+    #[error("No terminal editor found. Set $VISUAL or $EDITOR, or install nvim, vim, vi, or nano.")]
+    NoEditorFound,
+
     #[error("Embedded editor error: {0}")]
     EmbeddedEditor(String),
 

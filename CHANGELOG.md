@@ -6,6 +6,13 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-07-29
+
+### Changed
+
+- Enabled absolute and relative line numbers whenever Vi, Vim, or Neovim edits a note through the CLI or embedded TUI editor.
+- Replaced the assumed `vi` fallback with automatic discovery of `nvim`, `vim`, `vi`, then `nano`, and added an actionable error when no terminal editor is available.
+
 ## [0.5.0] - 2026-07-29
 
 ### Changed
@@ -70,7 +77,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 - Added strict slug and storage-boundary validation, compatible frontmatter parsing, typed calendar dates, and recoverable handling of malformed notes.
 - Added cross-platform CI, release packaging, CLI integration tests, TUI tests, and Rust 1.85 compatibility.
 
-[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/0x1sma1l/ztk/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/0x1sma1l/ztk/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/0x1sma1l/ztk/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/0x1sma1l/ztk/compare/v0.2.0...v0.3.0
