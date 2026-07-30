@@ -6,6 +6,12 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-07-30
+
+### Fixed
+
+- Added the missing `d delete` shortcut to the TUI's bottom key guide.
+
 ## [0.5.1] - 2026-07-29
 
 ### Changed
@@ -77,7 +83,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 - Added strict slug and storage-boundary validation, compatible frontmatter parsing, typed calendar dates, and recoverable handling of malformed notes.
 - Added cross-platform CI, release packaging, CLI integration tests, TUI tests, and Rust 1.85 compatibility.
 
-[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/0x1sma1l/ztk/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/0x1sma1l/ztk/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/0x1sma1l/ztk/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/0x1sma1l/ztk/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/0x1sma1l/ztk/compare/v0.3.0...v0.4.0

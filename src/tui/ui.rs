@@ -267,7 +267,7 @@ fn footer_keys(mode: UiMode) -> &'static str {
     match mode {
         UiMode::Read => " j/k scroll  PgUp/PgDn page  e edit  Esc notes ",
         UiMode::Editor => " editor owns keys  :wq save + apply  :q apply saved  F6 detach only ",
-        _ => " n new  Enter read  e edit  / search  h/? help  q/Esc exit ",
+        _ => " n new  Enter read  e edit  d delete  / search  h/? help  q/Esc exit ",
     }
 }
 
@@ -616,6 +616,7 @@ mod tests {
 
         assert!(output.contains("loaded 3 note(s), skipped 1 invalid file(s)"));
         assert!(output.contains("n new  Enter read  e edit"));
+        assert!(output.contains("d delete"));
     }
 
     #[test]
